@@ -219,9 +219,10 @@ func TestCacheLeavesRequestsItCannotAnswerAlone(t *testing.T) {
 		method string
 		header http.Header
 	}{
-		"a range request":              {http.MethodGet, http.Header{"Range": {"bytes=0-9"}}},
-		"a client's If-None-Match":     {http.MethodGet, http.Header{"If-None-Match": {`"abc"`}}},
-		"a client's If-Modified-Since": {http.MethodGet, http.Header{"If-Modified-Since": {"Wed, 21 Oct 2026 07:28:00 GMT"}}},
+		"a range request":                {http.MethodGet, http.Header{"Range": {"bytes=0-9"}}},
+		"a client's If-Match":            {http.MethodGet, http.Header{"If-Match": {`"abc"`}}},
+		"a client's If-Unmodified-Since": {http.MethodGet, http.Header{"If-Unmodified-Since": {"Wed, 21 Oct 2026 07:28:00 GMT"}}},
+		"a client's If-Range":            {http.MethodGet, http.Header{"If-Range": {`"abc"`}, "Range": {"bytes=0-9"}}},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

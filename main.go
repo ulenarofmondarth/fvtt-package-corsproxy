@@ -405,7 +405,12 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	case responseCache == nil:
 		resp, err = fetch(nil)
 	case cacheable(r):
-		result := responseCache.get(cacheKey(targetURL, r.Header), fetch)
+		// The fetch is shared by every client asking for this answer, so it carries none of this
+		// client's revalidation conditions, which are answered from what it gets.
+		shared := withoutRevalidation(r)
+		result := responseCache.get(cacheKey(targetURL, r.Header), func(extra http.Header) (*cachedResponse, error) {
+			return fetchUpstream(shared, targetURL, extra)
+		})
 		resp, err, cacheState = result.response, result.err, result.state
 	default:
 		resp, err = fetch(nil)
@@ -446,17 +451,22 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Access-Control-Expose-Headers", "X-Cache, Age")
 	}
 
-	// Copy status code
-	w.WriteHeader(resp.status)
+	// Copy status code, unless the client already has this answer: then say so, without it.
+	status, body := resp.status, resp.body
+	if cacheState != "" && cacheState != cacheBypass && notModified(r, resp) {
+		status, body = http.StatusNotModified, nil
+		w.Header().Del("Content-Length")
+	}
+	w.WriteHeader(status)
 
-	written, err := w.Write(resp.body)
+	written, err := w.Write(body)
 	if err != nil {
 		log.Printf("Error writing response body: %v", err)
 		return
 	}
 
 	if config.EnableVerboseLog {
-		log.Printf("%s %q -> %d (%d bytes) %s client %q", r.Method, targetURL, resp.status, written, cacheState, clientVersion(r))
+		log.Printf("%s %q -> %d (%d bytes) %s client %q", r.Method, targetURL, status, written, cacheState, clientVersion(r))
 	}
 }
 

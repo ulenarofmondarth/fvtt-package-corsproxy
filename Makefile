@@ -6,7 +6,7 @@ VERSION ?= dev
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # The coverage gate (percent of statements). Ratchet it up as coverage improves; never down.
-COVERAGE_MIN ?= 88
+COVERAGE_MIN ?= 89
 
 # The platforms each release ships a binary for.
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
