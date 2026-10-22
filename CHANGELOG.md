@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.0.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.4.0...v2.0.0) (2026-10-22)
+
+### ⚠ BREAKING CHANGES
+
+* **proxy:** POST, PUT, PATCH, DELETE and HEAD requests are refused
+with 405 instead of being proxied, and request bodies are never
+forwarded.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+### Features
+
+* **proxy:** add a URL allowlist with a report-only mode ([9bdd624](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/9bdd624d69490007319e2b3942733ee5b75ab72e))
+* **proxy:** proxy GET requests only ([d39cc74](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/d39cc74de94135befcb5308b746fbd28071b346c))
+
+### Bug Fixes
+
+* **proxy:** log a client's version only when it looks like one ([59639d5](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/59639d51dcda1cc20871737c8336fcf2dbaba657))
+
 ## [1.4.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.3.0...v1.4.0) (2026-10-22)
 
 ### Features
