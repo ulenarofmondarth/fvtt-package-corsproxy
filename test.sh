@@ -100,7 +100,7 @@ start_server() {
     else
         # Build and run
         echo "Building server..."
-        go build -o /tmp/cors-proxy-test main.go
+        go build -o /tmp/cors-proxy-test .
         /tmp/cors-proxy-test > /tmp/cors-proxy-test.log 2>&1 &
         SERVER_PID=$!
     fi
@@ -170,8 +170,8 @@ test_invalid_url() {
 test_github_api() {
     run_test "Fetch GitHub API (JSON response)"
     
-    response=$(curl -s "${PROXY_URL}/?url=https://api.github.com/users/melihbirim")
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${PROXY_URL}/?url=https://api.github.com/users/melihbirim")
+    response=$(curl -s "${PROXY_URL}/?url=https://api.github.com/users/octocat")
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "${PROXY_URL}/?url=https://api.github.com/users/octocat")
     
     if [ "$http_code" = "200" ] && echo "$response" | grep -q '"login"'; then
         print_success "Successfully fetched GitHub user data"

@@ -4,11 +4,11 @@ services:
   cors-proxy:
     build: .
     ports:
-      - "8080:8080"
+      - '8080:8080'
     environment:
       - PORT=8080
       # Request Limits
-      - MAX_REQUEST_SIZE=10485760      # 10MB
+      - MAX_REQUEST_SIZE=10485760 # 10MB
       - REQUEST_TIMEOUT=30s
       - MAX_REDIRECTS=10
       # CORS
@@ -22,7 +22,7 @@ services:
       - VERBOSE_LOGGING=false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8080/health']
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,0 +1,65 @@
+{
+  "name": "fvtt-package-corsproxy",
+  "version": "1.2.6",
+  "private": true,
+  "description": "A caching CORS proxy for Foundry VTT package lookups. The proxy is Go; this package holds the repository's tooling: commit hooks, semantic-release and the tests of its configuration.",
+  "author": "Ulenar of Mondarth",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.11.2",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=12",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "prepare": "husky",
+    "build": "make build",
+    "test": "pnpm test:go && pnpm test:repo",
+    "test:go": "go test ./...",
+    "test:repo": "vitest run",
+    "test:coverage": "make coverage && pnpm test:repo",
+    "lint": "pnpm lint:go && pnpm lint:repo",
+    "lint:go": "make lint",
+    "lint:repo": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "gofmt -w . && prettier --write .",
+    "format:check": "make fmt-check && prettier --check .",
+    "build:docs": "DOCS_UID=$(id -u) DOCS_GID=$(id -g) docker compose -f docs/compose.yaml run --rm --no-deps -T docs make html",
+    "devserve:docs": "DOCS_UID=$(id -u) DOCS_GID=$(id -g) docker compose -f docs/compose.yaml run --rm --service-ports docs make livehtml",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run --no-ci",
+    "commit": "cz"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/types": "^21.2.3",
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "@types/node": "^24.19.2",
+    "commitizen": "4.3.2",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
+    "cz-conventional-changelog": "3.3.0",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "husky": "^9.1.3",
+    "jiti": "^2.7.0",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.3.3",
+    "semantic-release": "^25.0.9",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5",
+    "yaml": "^2.9.1"
+  }
+}

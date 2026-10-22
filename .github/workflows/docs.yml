@@ -1,0 +1,26 @@
+name: Docs
+
+# Builds the documentation (.github/actions/build-docs) and keeps it as an artifact. Called by
+# Dev CI; the release workflow builds it in its Pages job instead, from the release tag.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/build-docs
+
+      - name: Keep the documentation
+        uses: actions/upload-artifact@v7
+        with:
+          name: documentation
+          path: docs/_build/html
+          retention-days: 7

@@ -1,0 +1,10 @@
+{
+  "*.go": ["gofmt -w", "bash -c 'go vet ./...'", "bash -c 'golangci-lint run'", "bash -c 'go test ./...'"],
+  "{*.ts,tests/**/*.ts}": [
+    "eslint --fix --max-warnings 0",
+    "prettier --write",
+    "bash -c 'tsc --noEmit'",
+    "vitest related --run"
+  ],
+  "*.{js,mjs,cjs,json,md,yml,yaml}": ["prettier --write"]
+}
