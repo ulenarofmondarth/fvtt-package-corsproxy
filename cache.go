@@ -24,7 +24,7 @@ const (
 	cacheHit         = "HIT"         // served from the cache, fresh
 	cacheRevalidated = "REVALIDATED" // expired, and the upstream confirmed it unchanged (304)
 	cacheStale       = "STALE"       // expired, served because the upstream refused or failed
-	cacheBypass      = "BYPASS"      // a request the cache does not answer (a range or conditional one)
+	cacheBypass      = "BYPASS"      // a request the cache does not answer (a range, or If-Match and the like)
 )
 
 // cachedResponse is an upstream answer, as the client is sent it.
@@ -111,10 +111,12 @@ func setupCache() {
 		config.CacheMaxBytes, config.CacheMaxEntryBytes)
 }
 
-// cacheable reports whether the cache answers a request, which is always a GET: not a range
-// or conditional request, which wants something other than the whole, current answer.
+// cacheable reports whether the cache answers a request, which is always a GET. A range, or a
+// request on the conditions If-Match, If-Unmodified-Since or If-Range, wants something other than
+// the whole, current answer, and goes upstream. A revalidation (If-None-Match, If-Modified-Since),
+// as a browser sends for an answer it has kept, the cache answers itself (see notModified).
 func cacheable(r *http.Request) bool {
-	for _, name := range []string{"Range", "If-None-Match", "If-Modified-Since", "If-Match", "If-Unmodified-Since", "If-Range"} {
+	for _, name := range []string{"Range", "If-Match", "If-Unmodified-Since", "If-Range"} {
 		if r.Header.Get(name) != "" {
 			return false
 		}
@@ -279,4 +281,52 @@ func (c *memoryCache) waiting(key string) int {
 		return f.waiters
 	}
 	return 0
+}
+
+// revalidationHeaders are the conditions on which a client asks for an answer only if it has
+// changed. The cache answers them itself, so they never go upstream with a fetch it shares.
+var revalidationHeaders = []string{"If-None-Match", "If-Modified-Since"}
+
+// withoutRevalidation is a client's request without its revalidation conditions, for the cache to
+// fetch on behalf of every client that asks for the same answer.
+func withoutRevalidation(r *http.Request) *http.Request {
+	clean := r.Clone(r.Context())
+	for _, name := range revalidationHeaders {
+		clean.Header.Del(name)
+	}
+	return clean
+}
+
+// notModified reports whether a client's revalidation conditions say it already has the answer, so
+// it is sent 304 Not Modified. Only a 200 answer is compared. If-None-Match decides alone when it
+// is sent, compared weakly, as for a GET; otherwise If-Modified-Since is compared with the answer's
+// Last-Modified.
+func notModified(r *http.Request, resp *cachedResponse) bool {
+	if resp.status != http.StatusOK {
+		return false
+	}
+	if tags := r.Header.Values("If-None-Match"); len(tags) > 0 {
+		return etagMatches(strings.Join(tags, ","), resp.header.Get("ETag"))
+	}
+	since, err := http.ParseTime(r.Header.Get("If-Modified-Since"))
+	if err != nil {
+		return false
+	}
+	modified, err := http.ParseTime(resp.header.Get("Last-Modified"))
+	return err == nil && !modified.After(since)
+}
+
+// etagMatches reports whether a list of entity tags, or `*`, matches an answer's ETag, comparing
+// weakly: `W/"v1"` matches `"v1"`.
+func etagMatches(list, etag string) bool {
+	if etag == "" {
+		return false
+	}
+	weak := func(tag string) string { return strings.TrimPrefix(strings.TrimSpace(tag), "W/") }
+	for _, tag := range strings.Split(list, ",") {
+		if strings.TrimSpace(tag) == "*" || weak(tag) == weak(etag) {
+			return true
+		}
+	}
+	return false
 }
