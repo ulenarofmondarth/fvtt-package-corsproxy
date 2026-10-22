@@ -219,7 +219,6 @@ func TestCacheLeavesRequestsItCannotAnswerAlone(t *testing.T) {
 		method string
 		header http.Header
 	}{
-		"a POST":                       {http.MethodPost, nil},
 		"a range request":              {http.MethodGet, http.Header{"Range": {"bytes=0-9"}}},
 		"a client's If-None-Match":     {http.MethodGet, http.Header{"If-None-Match": {`"abc"`}}},
 		"a client's If-Modified-Since": {http.MethodGet, http.Header{"If-Modified-Since": {"Wed, 21 Oct 2026 07:28:00 GMT"}}},

@@ -284,6 +284,10 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// allowedMethods are the methods the proxy answers: GET, and the preflight
+// before one.
+const allowedMethods = "GET, OPTIONS"
+
 // Headers never forwarded to the proxy target. Go canonicalizes header
 // names (textproto.CanonicalMIMEHeaderKey), so these must match that form
 // exactly, not the wire form (e.g. "X-Api-Key", not "X-API-Key").
@@ -300,7 +304,7 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Set CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Max-Age", "86400")
 
@@ -310,8 +314,16 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Handle preflight requests
-	if r.Method == "OPTIONS" {
+	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Only reading is proxied: nothing is ever sent to an upstream on a
+	// caller's behalf. Refused before anything that spends a budget.
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", allowedMethods)
+		http.Error(w, `{"error":"Only GET requests are proxied"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -359,9 +371,6 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	// Cap the request body like the response.
-	r.Body = http.MaxBytesReader(w, r.Body, config.MaxRequestSize)
 
 	fetch := func(extra http.Header) (*cachedResponse, error) { return fetchUpstream(r, targetURL, extra) }
 	var resp *cachedResponse
@@ -443,7 +452,8 @@ var errUpstreamTooLarge = errors.New("upstream response is too large")
 // fetchUpstream sends the client's request to the target, with the extra headers added, and
 // reads the whole answer.
 func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cachedResponse, error) {
-	proxyReq, err := http.NewRequestWithContext(context.Background(), r.Method, targetURL, r.Body)
+	// A GET, with no body: the caller's body, if it sent one, is never forwarded.
+	proxyReq, err := http.NewRequestWithContext(context.Background(), http.MethodGet, targetURL, http.NoBody)
 	if err != nil {
 		log.Printf("Error creating request: %v", err)
 		return nil, &upstreamError{http.StatusBadRequest, fmt.Sprintf(`{"error":"Invalid URL: %s"}`, err.Error()), err}
