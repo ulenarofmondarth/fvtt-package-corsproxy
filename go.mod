@@ -1,3 +1,3 @@
-module github.com/melihbirim/corsproxy
+module github.com/ulenarofmondarth/fvtt-package-corsproxy
 
-go 1.21
+go 1.27

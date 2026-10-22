@@ -1,91 +1,105 @@
-.PHONY: help build run test docker docker-run docker-build clean dev install
+.PHONY: help build run dev test coverage smoke lint fmt fmt-check dist install docker docker-build docker-run \
+	docker-compose-up docker-compose-down clean config
+
+# The version stamped into the binary (`/health` and the startup log). Releases pass the tag.
+VERSION ?= dev
+LDFLAGS := -s -w -X main.version=$(VERSION)
+
+# The coverage gate (percent of statements). Ratchet it up as coverage improves; never down.
+COVERAGE_MIN ?= 82
+
+# The platforms each release ships a binary for.
+PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  make build       - Build the binary"
-	@echo "  make run         - Run the server"
-	@echo "  make dev         - Run with hot reload (requires air)"
-	@echo "  make test        - Run tests"
-	@echo "  make docker      - Build and run Docker container"
-	@echo "  make docker-build - Build Docker image"
-	@echo "  make docker-run  - Run Docker container"
-	@echo "  make install     - Install dependencies"
-	@echo "  make clean       - Clean build artifacts"
+	@echo "  make build         - Build the binary into bin/"
+	@echo "  make run           - Run the server"
+	@echo "  make dev           - Run with hot reload (requires air)"
+	@echo "  make test          - Run the Go tests"
+	@echo "  make coverage      - Run the Go tests with the coverage gate ($(COVERAGE_MIN)%)"
+	@echo "  make smoke         - Start the server and run test.sh against real sites (needs network)"
+	@echo "  make lint          - go vet and golangci-lint"
+	@echo "  make fmt           - Format the Go code"
+	@echo "  make fmt-check     - Fail if any Go file is not gofmt'd"
+	@echo "  make dist          - Cross-compile the release binaries into dist/"
+	@echo "  make docker        - Build and run the Docker image"
+	@echo "  make install       - Download the Go dependencies"
+	@echo "  make clean         - Remove build artifacts"
+	@echo "  make config        - Show the configuration from the environment"
 
-# Build the application
-build: fmt
-	@echo "🔨 Building..."
-	go build -o bin/cors-proxy main.go
-	@echo "✅ Build complete: bin/cors-proxy"
+build:
+	go build -trimpath -ldflags="$(LDFLAGS)" -o bin/cors-proxy .
 
-# Run the application
 run:
-	@echo "🚀 Starting server..."
-	go run main.go
+	go run .
 
 # Development mode with hot reload (requires air)
 dev:
-	@echo "🔥 Starting development server with hot reload..."
-	@command -v air > /dev/null 2>&1 || (echo "Installing air..." && go install github.com/cosmtrek/air@latest)
+	@command -v air > /dev/null 2>&1 || (echo "Installing air..." && go install github.com/air-verse/air@latest)
 	air
 
-# Run tests
 test:
-	@echo "🧪 Running tests..."
-	chmod +x test.sh
+	go test ./...
+
+coverage:
+	go test ./... -coverprofile=coverage.out -covermode=atomic
+	@total=$$(go tool cover -func=coverage.out | awk '/^total:/ { sub(/%/, "", $$3); print $$3 }'); \
+	echo "Coverage: $${total}% (minimum $(COVERAGE_MIN)%)"; \
+	awk -v total="$$total" -v min="$(COVERAGE_MIN)" 'BEGIN { exit !(total >= min) }' \
+		|| { echo "Coverage is below the minimum."; exit 1; }
+
+# The end-to-end smoke test: a real server, fetching from real sites.
+smoke:
 	./test.sh
 
-# Install dependencies
+lint:
+	go vet ./...
+	golangci-lint run
+
+fmt:
+	gofmt -w .
+
+fmt-check:
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then echo "Not gofmt'd:"; echo "$$unformatted"; exit 1; fi
+
+dist:
+	rm -rf dist && mkdir -p dist
+	@for platform in $(PLATFORMS); do \
+		os=$${platform%/*}; arch=$${platform#*/}; ext=; \
+		[ "$$os" = windows ] && ext=.exe; \
+		echo "Building $$os/$$arch"; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags="$(LDFLAGS)" \
+			-o "dist/cors-proxy-$$os-$$arch$$ext" . || exit 1; \
+	done
+	cd dist && sha256sum cors-proxy-* > checksums.txt
+
 install:
-	@echo "📦 Installing dependencies..."
 	go mod download
 	go mod tidy
 
-# Build Docker image
 docker-build:
-	@echo "🐳 Building Docker image..."
-	docker build -t cors-proxy:latest .
-	@echo "✅ Docker image built: cors-proxy:latest"
+	docker build --build-arg VERSION=$(VERSION) -t cors-proxy:latest .
 
-# Run Docker container
 docker-run:
-	@echo "🐳 Running Docker container..."
 	docker run -p 8080:8080 --rm cors-proxy:latest
 
-# Build and run with Docker
 docker: docker-build docker-run
 
-# Docker Compose
 docker-compose-up:
-	@echo "🐳 Starting with Docker Compose..."
-	docker-compose up --build
+	docker compose up --build
 
 docker-compose-down:
-	docker-compose down
+	docker compose down
 
-# Clean build artifacts
 clean:
-	@echo "🧹 Cleaning..."
-	rm -rf bin/
-	rm -f cors-proxy
+	rm -rf bin/ dist/ coverage.out
 	go clean
-	@echo "✅ Clean complete"
-
-# Format code
-fmt:
-	@echo "🎨 Formatting code..."
-	go fmt ./...
-
-# Lint code (requires golangci-lint)
-lint: fmt
-	@echo "🔍 Linting..."
-	@command -v golangci-lint > /dev/null 2>&1 || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
-	golangci-lint run
 
 # Show current configuration
 config:
-	@echo "⚙️  Current Configuration:"
 	@echo "PORT: $${PORT:-8080}"
 	@echo "MAX_REQUEST_SIZE: $${MAX_REQUEST_SIZE:-10485760}"
 	@echo "REQUEST_TIMEOUT: $${REQUEST_TIMEOUT:-30s}"

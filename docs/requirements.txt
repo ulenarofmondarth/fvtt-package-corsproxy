@@ -1,0 +1,6 @@
+# Python requirements for the documentation build. Keep this list minimal and pinned.
+sphinx==9.1.0
+myst-parser==5.1.0
+furo==2025.12.19
+sphinxcontrib-mermaid==2.1.1
+sphinx-autobuild==2025.8.25

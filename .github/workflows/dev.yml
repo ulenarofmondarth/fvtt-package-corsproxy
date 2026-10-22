@@ -1,0 +1,142 @@
+name: Dev CI
+
+# The full quality gate. Runs on every push to `dev` and on every pull request. The release
+# workflow calls it for pushes to `main`, so nothing is released without passing it.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, main]
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+  workflow_dispatch:
+
+concurrency:
+  group: dev-ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: '0'
+
+jobs:
+  commits:
+    name: Commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Lint the pull request's commit messages
+        run: >-
+          pnpm exec commitlint --verbose
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-go
+      - uses: ./.github/actions/setup
+      - name: gofmt
+        run: make fmt-check
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+      - name: ESLint
+        run: pnpm lint:repo
+      - name: Prettier
+        run: pnpm exec prettier --check .
+
+  unit:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-go
+      - uses: ./.github/actions/setup
+      - name: Go tests with the coverage gate
+        run: make coverage
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('coverage.out') != '' }}
+        run: |
+          {
+            echo '### Go coverage'
+            echo
+            echo '```'
+            go tool cover -func=coverage.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+      - name: Tests of the repository's tooling
+        run: pnpm test:repo
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-go
+      # What a release attaches: every platform's binary and the checksums.
+      - name: Cross-compile the release binaries
+        run: make dist VERSION=ci-${{ github.sha }}
+      - name: Keep the binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+      # The image the release publishes, built but not pushed.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the container image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: cors-proxy:ci
+          build-args: VERSION=ci-${{ github.sha }}
+          cache-from: type=gha,scope=image
+          cache-to: type=gha,scope=image,mode=max
+      - name: Check that the image starts and reports its version
+        run: |
+          docker run -d --name proxy -p 8080:8080 cors-proxy:ci
+          for _ in $(seq 1 20); do
+            if health=$(curl -sf localhost:8080/health); then break; fi
+            sleep 0.5
+          done
+          docker rm -f proxy
+          echo "$health" | jq -e --arg version "ci-${{ github.sha }}" '.status == "ok" and .version == $version'
+
+  docs:
+    name: Docs
+    uses: ./.github/workflows/docs.yml
+
+  # A single required check for branch protection.
+  ci-passed:
+    name: CI passed
+    if: ${{ always() }}
+    needs: [commits, lint, unit, build, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that every job passed (or was skipped)
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")'

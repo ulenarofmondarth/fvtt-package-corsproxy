@@ -1,0 +1,39 @@
+name: Bug report
+description: Something does not work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The request you sent (with any API key removed), and the configuration the proxy runs with.
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The `version` from `/health`, or the commit if you run it from source.
+    validations:
+      required: true
+  - type: input
+    id: deployment
+    attributes:
+      label: How it is deployed
+      description: For example "the ghcr.io image behind nginx", or "the linux-arm64 binary under systemd".
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or logs
+      description: What the proxy logged, ideally with `VERBOSE_LOGGING=true`. Remove keys and private hosts.
+      render: text

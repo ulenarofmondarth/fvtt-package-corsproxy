@@ -13,3 +13,14 @@
 /corsproxy
 .env
 .env.local
+
+# Tooling (Node.js): commit hooks, semantic-release
+node_modules/
+.pnpm-debug.log*
+*.log
+.eslintcache
+*.tsbuildinfo
+
+# Coverage and documentation output
+coverage/
+docs/_build/
