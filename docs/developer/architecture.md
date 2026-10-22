@@ -32,6 +32,8 @@ flowchart LR
 
 `memoryCache` (`cache.go`) is an LRU of whole answers, bounded by `CACHE_MAX_BYTES`, keyed on the target URL with the request's `Accept` and `Accept-Encoding`. Its `get` either serves a fresh answer, waits on the fetch already under way for the same key, or becomes that fetch itself, so a key is only ever fetched once at a time. `refresh` makes the fetch, conditional when an expired answer has an `ETag` or `Last-Modified`, and decides what to keep and what to serve: a `304` renews the expired answer, a refusal or failure serves it stale within `CACHE_MAX_STALE`, and anything else replaces it, or removes it if it cannot be kept.
 
+A client's revalidation (`If-None-Match`, `If-Modified-Since`) is answered from the cache: the handler fetches through it with `withoutRevalidation`, so a fetch shared by several clients carries none of one client's conditions, and then `notModified` decides between `304` and the whole answer.
+
 The cache keeps answers marked `Cache-Control: private`, and honours only `no-store`. GitHub marks every authenticated answer `private`, but the proxy's token reads public repositories only and clients' credentials are never forwarded, so the answers are the same for every client.
 
 The checks before it (API key, limits, host) run on every request, hits included, so the cache never answers a request the proxy would refuse. Its clock is a field, `now`, so the tests move time by hand.

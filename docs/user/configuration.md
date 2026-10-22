@@ -161,13 +161,15 @@ The cache keeps upstream answers in memory, shared by every client, so a URL man
 
 What it keeps:
 
-- answers to `GET` requests, the only ones the proxy makes. A request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like) goes straight to the upstream;
+- answers to `GET` requests, the only ones the proxy makes. A request with a `Range` header, or with `If-Match`, `If-Unmodified-Since` or `If-Range`, goes straight to the upstream;
 - `200` answers for `CACHE_TTL`, and `404` and `410` answers for `CACHE_NEGATIVE_TTL`. Other answers are passed on and not kept;
 - not answers that set cookies, are marked `Cache-Control: no-store`, or say `Vary: *`, nor any larger than `CACHE_MAX_ENTRY_BYTES`.
 
 An answer is kept for its URL together with the request's `Accept` and `Accept-Encoding` headers. The proxy never forwards credentials, so nothing else can make two clients' answers differ.
 
 Once an answer expires, the next request for it revalidates it: the proxy asks the upstream whether it has changed (`If-None-Match` with its `ETag`, or `If-Modified-Since`), and a `304` renews it without downloading it again. If the upstream refuses instead (`403`, as GitHub's rate limit does, `429` or a `5xx`) or cannot be reached, the expired answer is served, for up to `CACHE_MAX_STALE` past its expiry. A `404` replaces it.
+
+A browser keeps the answers it is given, and revalidates them with conditions of its own: `If-None-Match` with the answer's `ETag`, or `If-Modified-Since`. The cache answers those itself. When it holds the answer, it sends `304 Not Modified`, with no body, if the client's copy is current (`If-None-Match` is compared weakly, and decides alone when both are sent), and the whole answer if it is not. When it has to fetch the answer first, it fetches it without the client's conditions, keeps it, and answers them from it. So a browser's revalidations never reach the upstream while the cache is fresh, and only `200` answers are compared.
 
 While one request for an answer is with the upstream, others for the same answer wait for it rather than sending their own. When the cache is full, the least recently used answers make room.
 
@@ -179,7 +181,7 @@ Every answer says where it came from, in an `X-Cache` header that the client's s
 | `HIT`         | Served from the cache                                                 |
 | `REVALIDATED` | Expired, and the upstream confirmed it unchanged                      |
 | `STALE`       | Expired, and served because the upstream refused or could not be reached |
-| `BYPASS`      | Not a request the cache answers                                       |
+| `BYPASS`      | Not a request the cache answers (a range, or `If-Match` and the like) |
 
 Answers from the cache also carry `Age`, the seconds since the upstream last gave or confirmed them.
 
