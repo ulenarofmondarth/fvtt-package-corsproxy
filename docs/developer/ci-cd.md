@@ -12,7 +12,7 @@ Runs on every push to `dev`, on every pull request to `dev` or `main`, and as th
 | --------------- | -------------------------------------------------------------------------------------------------------------- |
 | Commit messages | commitlint over the pull request's commits (pull requests only)                                                |
 | Lint            | gofmt, `go vet`, golangci-lint, ESLint over the tooling, Prettier                                              |
-| Tests           | the Go tests with the coverage gate (summary on the job page, uploaded to Codecov), then the tooling's tests   |
+| Tests           | the Go tests with the coverage gate (summary on the job page, uploaded to Codecov: a failed upload fails the job when `CODECOV_TOKEN` is set), then the tooling's tests |
 | Build           | cross-compiles the release binaries (kept as an artifact); builds the container image and checks that it starts and reports its version |
 | Docs            | calls the Docs workflow                                                                                        |
 | CI passed       | succeeds only if all of the above passed; the required status check                                            |
