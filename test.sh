@@ -222,23 +222,19 @@ test_preflight() {
     fi
 }
 
-# Test 8: POST Request with JSON
-test_post_json() {
-    run_test "POST request with JSON body"
-    
-    response=$(curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -d '{"title":"Test"}' \
-        "${PROXY_URL}/?url=https://httpbin.org/post")
+# Test 8: Only GET is proxied
+test_post_refused() {
+    run_test "POST request (should be refused)"
+
     http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
         -H "Content-Type: application/json" \
         -d '{"title":"Test"}' \
         "${PROXY_URL}/?url=https://httpbin.org/post")
-    
-    if [ "$http_code" = "200" ] && echo "$response" | grep -q '"title"'; then
-        print_success "POST request successful"
+
+    if [ "$http_code" = "405" ]; then
+        print_success "Correctly refused a POST with 405"
     else
-        print_failure "POST request failed. HTTP: $http_code"
+        print_failure "Expected 405, got $http_code"
     fi
 }
 
@@ -295,7 +291,7 @@ main() {
     test_moby_dick
     test_cors_headers
     test_preflight
-    test_post_json
+    test_post_refused
     test_custom_headers
     test_response_time
     

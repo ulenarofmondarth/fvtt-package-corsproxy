@@ -116,7 +116,7 @@ The cache keeps upstream answers in memory, shared by every client, so a URL man
 
 What it keeps:
 
-- answers to plain `GET` requests. A `POST`, or a request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like), goes straight to the upstream;
+- answers to `GET` requests, the only ones the proxy makes. A request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like) goes straight to the upstream;
 - `200` answers for `CACHE_TTL`, and `404` and `410` answers for `CACHE_NEGATIVE_TTL`. Other answers are passed on and not kept;
 - not answers that set cookies, are marked `Cache-Control: no-store`, or say `Vary: *`, nor any larger than `CACHE_MAX_ENTRY_BYTES`.
 

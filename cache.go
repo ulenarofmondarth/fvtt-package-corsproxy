@@ -24,7 +24,7 @@ const (
 	cacheHit         = "HIT"         // served from the cache, fresh
 	cacheRevalidated = "REVALIDATED" // expired, and the upstream confirmed it unchanged (304)
 	cacheStale       = "STALE"       // expired, served because the upstream refused or failed
-	cacheBypass      = "BYPASS"      // a request the cache does not answer (not a plain GET)
+	cacheBypass      = "BYPASS"      // a request the cache does not answer (a range or conditional one)
 )
 
 // cachedResponse is an upstream answer, as the client is sent it.
@@ -111,12 +111,9 @@ func setupCache() {
 		config.CacheMaxBytes, config.CacheMaxEntryBytes)
 }
 
-// cacheable reports whether the cache answers a request: plain GETs only. A range or
-// conditional request from the client wants something other than the whole, current answer.
+// cacheable reports whether the cache answers a request, which is always a GET: not a range
+// or conditional request, which wants something other than the whole, current answer.
 func cacheable(r *http.Request) bool {
-	if r.Method != http.MethodGet {
-		return false
-	}
 	for _, name := range []string{"Range", "If-None-Match", "If-Modified-Since", "If-Match", "If-Unmodified-Since", "If-Range"} {
 		if r.Header.Get(name) != "" {
 			return false

@@ -2,7 +2,7 @@
 
 ## `/?url=<target-url>`
 
-Fetches the target URL and returns its response with CORS headers added. `GET`, `POST`, `PUT`, `DELETE` and `PATCH` are passed through; `OPTIONS` (a preflight) is answered by the proxy itself.
+Fetches the target URL and returns its response with CORS headers added. Only `GET` is proxied, and a request body is never forwarded: the proxy reads from upstreams, and never sends anything to one on a caller's behalf. `OPTIONS` (a preflight) is answered by the proxy itself, and any other method gets `405 Method Not Allowed`.
 
 The target is the `url` query parameter. It must start with `http://` or `https://`, and be URL-encoded when it has a query of its own:
 
@@ -34,6 +34,7 @@ The request's headers are forwarded, except `Host`, `Authorization`, `Cookie` an
 | ------ | ------------------------------------------ | ----------------------------------------------------- |
 | `400`  | `Missing 'url' parameter…`                 | No `url`                                              |
 | `400`  | `URL must start with http:// or https://`  | The target is not an HTTP URL                         |
+| `405`  | `Only GET requests are proxied`            | A method other than `GET` (or the `OPTIONS` preflight) |
 | `401`  | `Missing or invalid API key`               | `REQUIRE_API_KEY` is on, and the key is missing or wrong |
 | `403`  | `This host is not allowed`                 | The target, or a redirect, is not allowed             |
 | `429`  | `Rate limit exceeded…`                     | `RATE_LIMIT_PER_MINUTE` was reached                   |
