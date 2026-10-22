@@ -17,7 +17,7 @@ It is a fork of [melihbirim/corsproxy](https://github.com/melihbirim/corsproxy),
 - **One static binary**, using only Go's standard library, for Linux, macOS and Windows, and a multi-arch container image of under 15 MB that runs as an unprivileged user.
 - **A shared response cache**, off until you set `CACHE_TTL`: each upstream answer is fetched once for every client, revalidated cheaply when it expires, and served stale when the upstream refuses, as GitHub does once its rate limit is reached.
 - **A GitHub token**, if you give it one, for GitHub's API only: 5,000 requests an hour instead of the 60 that every client of the proxy otherwise shares.
-- **Locked down when you need it**: allowed origins, allowed and blocked hosts, API keys, a per-IP rate limit and a daily request ceiling.
+- **Locked down when you need it**: allowed origins, allowed and blocked hosts, a URL allowlist (with a report-only mode to build it), API keys, a per-IP rate limit and a daily request ceiling.
 - **Read-only**: only `GET` is proxied, and a request body is never forwarded.
 - **Safe by default**: private, loopback and cloud metadata addresses are refused on every connection, redirects included; credentials (`Authorization`, `Cookie`, `X-API-Key`) are never forwarded; cookies from upstream are dropped; proxied content cannot run as a page of the proxy's origin.
 - **Honest about sizes**: responses over the limit are refused, never cut short.
