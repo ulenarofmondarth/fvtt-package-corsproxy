@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.3.0...v1.4.0) (2026-10-22)
+
+### Features
+
+* **github:** authenticate requests to GitHub's API with a token ([7dffd20](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/7dffd20270bc02f0b4665fcc26bbe6e0b7c1b079))
+
 ## [1.3.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.2.6...v1.3.0) (2026-10-22)
 
 ### Features
