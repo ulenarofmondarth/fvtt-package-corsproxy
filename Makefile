@@ -117,4 +117,5 @@ config:
 	@echo "CACHE_MAX_STALE: $${CACHE_MAX_STALE:-24h}"
 	@echo "CACHE_MAX_BYTES: $${CACHE_MAX_BYTES:-67108864}"
 	@echo "CACHE_MAX_ENTRY_BYTES: $${CACHE_MAX_ENTRY_BYTES:-2097152}"
+	@echo "GITHUB_TOKEN: $$( [ -n "$${GITHUB_TOKEN}" ] && echo set || echo unset)"
 	@echo "VERBOSE_LOGGING: $${VERBOSE_LOGGING:-false}"

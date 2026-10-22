@@ -49,8 +49,8 @@ An App made for another repository can be installed on this one too, instead of 
 
 - **Issues**: a fork has them off by default. Turn them on (Settings → General → Features) for the issue forms in `.github/ISSUE_TEMPLATE`.
 - **Pull requests**: allow merge commits. The rulesets decide which merge methods each branch accepts.
-- **Pages**: Settings → Pages → Source: **GitHub Actions**.
-- **Packages**: after the first release, make the `fvtt-package-corsproxy` package public (the package's settings → Change visibility), so that the image can be pulled without logging in.
+- **Pages**: Settings → Pages → Source: **GitHub Actions**. Turning Pages on creates the `github-pages` environment, which only lets the default branch, `dev`, deploy. The release workflow deploys from `main`, so change it (Settings → Environments → `github-pages` → Deployment branches and tags): add `main`, and remove `dev`, so that only released documentation is published. Otherwise the release's Pages job fails with `Branch "main" is not allowed to deploy to github-pages due to environment protection rules`.
+- **Packages**: the release pushes the image to `ghcr.io/ulenarofmondarth/fvtt-package-corsproxy`, linked to this repository, and it takes the repository's visibility: public, so it can be pulled without logging in. Nothing to set.
 - **Code security**: enable Dependabot alerts and security updates, code scanning, and private vulnerability reporting (which `SECURITY.md` points to).
 
 ## Release tags
