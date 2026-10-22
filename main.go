@@ -56,6 +56,8 @@ type Config struct {
 	// CacheMaxBytes bounds the memory the cache uses; CacheMaxEntryBytes, one answer in it.
 	CacheMaxBytes      int64
 	CacheMaxEntryBytes int64
+	// GitHubToken authenticates the proxy's requests to GitHub's API (see github.go).
+	GitHubToken string
 }
 
 var (
@@ -115,6 +117,9 @@ func main() {
 		}
 	}
 	warnOnOpenDefaults()
+	if config.GitHubToken != "" {
+		log.Printf("🐙 GitHub token set: requests to %s are authenticated", githubAPIHost)
+	}
 	setupCache()
 	if responseCache != nil {
 		log.Printf("🗄️  Response cache: %v (%v for 404s), served up to %v stale on upstream errors, %d MB (%d KB per answer)",
@@ -147,6 +152,7 @@ func loadConfig() {
 		CacheMaxStale:        getEnvDuration("CACHE_MAX_STALE", 24*time.Hour),
 		CacheMaxBytes:        getEnvInt64("CACHE_MAX_BYTES", 64*1024*1024),      // 64MB
 		CacheMaxEntryBytes:   getEnvInt64("CACHE_MAX_ENTRY_BYTES", 2*1024*1024), // 2MB
+		GitHubToken:          getEnv("GITHUB_TOKEN", ""),
 	}
 }
 
@@ -460,6 +466,7 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 	for key, values := range extra {
 		proxyReq.Header[key] = values
 	}
+	authenticateGitHub(proxyReq)
 
 	// Make the request
 	client := &http.Client{
@@ -472,6 +479,8 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 			if !isHostAllowed(req.URL.String()) {
 				return fmt.Errorf("redirect to a host that is not allowed")
 			}
+			// The token goes to GitHub's API only, wherever the redirect leads.
+			authenticateGitHub(req)
 			return nil
 		},
 	}

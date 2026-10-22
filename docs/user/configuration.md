@@ -24,6 +24,7 @@ The proxy is configured entirely through environment variables. `.env.example` i
 | `CACHE_MAX_STALE`        | `24h`      | How long past `CACHE_TTL` an answer is still served when the upstream refuses or cannot be reached                |
 | `CACHE_MAX_BYTES`        | `67108864` | The most memory the cache uses, in bytes (64 MB)                                                                  |
 | `CACHE_MAX_ENTRY_BYTES`  | `2097152`  | The largest answer the cache keeps, in bytes (2 MB)                                                               |
+| `GITHUB_TOKEN`           |            | A GitHub token for the proxy's requests to `api.github.com` (see {ref}`github-token`)                             |
 | `VERBOSE_LOGGING`        | `false`    | Log every request                                                                                                 |
 
 ## Production checklist

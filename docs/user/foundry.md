@@ -41,6 +41,23 @@ CACHE_TTL=1h
 
 Each release list is then fetched from GitHub at most once an hour, whichever clients ask for it, and revalidating an unchanged one costs little. When GitHub refuses all the same, clients are given the last answer it gave, for up to `CACHE_MAX_STALE`, rather than the `403`.
 
-:::{todo}
-Authenticate to GitHub with a token, to raise the limit to 5,000 requests an hour.
-:::
+(github-token)=
+
+## A GitHub token
+
+Give the proxy a GitHub token, and GitHub allows it 5,000 API requests an hour instead of 60:
+
+```shell
+GITHUB_TOKEN=github_pat_…
+```
+
+The proxy then sends `Authorization: Bearer <token>` with every request to `api.github.com`, and to no other host: not to GitHub's release downloads, and not after a redirect away from the API, subdomains included. It is the proxy's own token. Clients' `Authorization` headers are never forwarded, so a client cannot use the proxy with a token of its own, nor see the proxy's.
+
+Every client of the proxy can read whatever the token can, and with the cache on the answers are shared between them. So give it access to public repositories only:
+
+1. On GitHub, open **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Name it for the proxy, and give it an expiry date. Remember to replace it before then.
+3. Under **Repository access**, choose **Public repositories**. Leave every permission at **No access**: reading public releases needs none.
+4. Generate it, and give it to the proxy as `GITHUB_TOKEN`, from a secret store or an environment file only root can read, never from a file in a repository.
+
+At start-up the proxy logs `🐙 GitHub token set`; it never logs the token itself. If GitHub answers `401 Bad credentials`, the token is wrong, expired or revoked.
