@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.2.6...v1.3.0) (2026-10-22)
+
+### Features
+
+* **cache:** share upstream answers between clients ([adb32fc](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/adb32fc19dee6bfe2e58545335ca107966a29ca1))
+
 Releases after 1.2.6 are written by semantic-release, from the commit messages, above this note.
 The releases below are upstream's, [melihbirim/corsproxy](https://github.com/melihbirim/corsproxy),
 in [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
