@@ -98,7 +98,7 @@ In `report` mode, a URL that matches no pattern is let through, and logged:
 📜 Not in ALLOWED_URLS, allowed (report mode): "https://gitlab.com/api/v4/projects/a%2Fb/releases?per_page=100" client "0.6.0"
 ```
 
-Run it while clients work as usual, add patterns for what they need, and switch to `enforce` once the log stays quiet. In `enforce` mode, refused URLs are logged the same way (`refused`), unless `LOG_UNLISTED_URLS=false`. `CLIENT_VERSION_HEADER` names a request header whose value, such as the client's version, is logged with each URL, so you can tell which version of a client asks for what. It is never forwarded upstream, and at most 64 characters of it are logged. Every value from a caller is logged quoted, so it cannot start a log line of its own.
+Run it while clients work as usual, add patterns for what they need, and switch to `enforce` once the log stays quiet. In `enforce` mode, refused URLs are logged the same way (`refused`), unless `LOG_UNLISTED_URLS=false`. `CLIENT_VERSION_HEADER` names a request header whose value, such as the client's version, is logged with each URL, so you can tell which version of a client asks for what. It is never forwarded upstream. Only a value that looks like a version is logged, at most 64 letters, digits, `.`, `+`, `_` and `-` such as `1.2.3-beta.1`, and anything else as `?`, so a credential sent in it by mistake never reaches the log. For the same reason it cannot be `Authorization`, `Proxy-Authorization`, `Cookie` or `X-API-Key`: the proxy refuses to start. Every value from a caller is logged quoted, so it cannot start a log line of its own.
 
 ## Rate limiting
 

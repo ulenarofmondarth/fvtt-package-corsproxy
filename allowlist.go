@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -45,8 +46,11 @@ const (
 	urlModeReport  = "report"
 )
 
-// setupURLRules parses ALLOWED_URLS and checks URL_ALLOWLIST_MODE.
+// setupURLRules parses ALLOWED_URLS and checks URL_ALLOWLIST_MODE and CLIENT_VERSION_HEADER.
 func setupURLRules() error {
+	if credentialHeaders[http.CanonicalHeaderKey(config.ClientVersionHeader)] {
+		return fmt.Errorf("CLIENT_VERSION_HEADER must not be %q, which carries credentials that would be logged", config.ClientVersionHeader)
+	}
 	if config.URLAllowlistMode != urlModeEnforce && config.URLAllowlistMode != urlModeReport {
 		return fmt.Errorf("URL_ALLOWLIST_MODE must be %q or %q, not %q", urlModeEnforce, urlModeReport, config.URLAllowlistMode)
 	}
@@ -172,17 +176,27 @@ func checkURL(r *http.Request, u *url.URL) bool {
 	return allowed
 }
 
-// The most of a client's version header that is logged.
-const maxClientVersion = 64
+// credentialHeaders carry credentials, so cannot be CLIENT_VERSION_HEADER, whose value is logged.
+var credentialHeaders = map[string]bool{
+	"Authorization":       true,
+	"Proxy-Authorization": true,
+	"Cookie":              true,
+	"X-Api-Key":           true,
+}
 
-// clientVersion is the value of the client's CLIENT_VERSION_HEADER, for the logs; empty without one.
+// versionLike is what a client's version is logged as: a word of at most 64 letters, digits
+// and `.+_-`, starting with a letter or digit, such as `0.5.0` or `1.2.3-beta.1+build_7`.
+var versionLike = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$`)
+
+// clientVersion is the client's CLIENT_VERSION_HEADER, for the logs: empty without one, and
+// `?` for a value that does not look like a version. Nothing else from the header is logged,
+// so neither a credential sent in it by mistake nor a forged log line can reach the log.
 func clientVersion(r *http.Request) string {
 	if config.ClientVersionHeader == "" {
 		return ""
 	}
-	value := r.Header.Get(config.ClientVersionHeader)
-	if len(value) > maxClientVersion {
-		value = value[:maxClientVersion]
+	if value := r.Header.Get(config.ClientVersionHeader); versionLike.MatchString(value) {
+		return value
 	}
-	return value
+	return "?"
 }

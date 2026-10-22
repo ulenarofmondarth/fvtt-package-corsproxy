@@ -244,8 +244,8 @@ func TestLoggedValuesCannotForgeLogLines(t *testing.T) {
 	proxy(http.MethodGet, u.URL+"/unlisted", forging)
 	proxy(http.MethodGet, u.URL+"/listed", forging)
 
-	if strings.Count(logged.String(), "forged") < 3 {
-		t.Fatalf("log = %q, want all three requests logged", logged.String())
+	if !strings.Contains(logged.String(), "forged") || strings.Count(logged.String(), `client "?"`) < 2 {
+		t.Fatalf("log = %q, want the blocked URL quoted and the forged version twice as ?", logged.String())
 	}
 	stamp := regexp.MustCompile(`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} `)
 	for _, line := range strings.Split(strings.TrimSpace(logged.String()), "\n") {
@@ -255,15 +255,37 @@ func TestLoggedValuesCannotForgeLogLines(t *testing.T) {
 	}
 }
 
-func TestClientVersionIsLoggedAtMost64Characters(t *testing.T) {
-	u := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {})
-	withURLRules(t, "enforce", "127.0.0.1/listed")
-	config.ClientVersionHeader = "X-EMMA-Version"
-	logged := captureLog(t)
-
-	proxy(http.MethodGet, u.URL+"/unlisted", http.Header{"X-Emma-Version": {strings.Repeat("9", 100)}})
-
-	if want := `client "` + strings.Repeat("9", 64) + `"`; !strings.Contains(logged.String(), want) {
-		t.Errorf("log = %q, want the version cut to 64 characters", logged.String())
+func TestClientVersionIsLoggedOnlyWhenItLooksLikeOne(t *testing.T) {
+	cases := map[string]string{
+		"0.5.0":                       `client "0.5.0"`,
+		"1.2.3-beta.1+build_7":        `client "1.2.3-beta.1+build_7"`,
+		strings.Repeat("9", 64):       `client "` + strings.Repeat("9", 64) + `"`,
+		strings.Repeat("9", 65):       `client "?"`,
+		"0.5.0 secret":                `client "?"`,
+		"Bearer github_pat_something": `client "?"`,
+		"-1":                          `client "?"`,
 	}
+	for value, want := range cases {
+		u := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {})
+		withURLRules(t, "enforce", "127.0.0.1/listed")
+		config.ClientVersionHeader = "X-EMMA-Version"
+		logged := captureLog(t)
+
+		proxy(http.MethodGet, u.URL+"/unlisted", http.Header{"X-Emma-Version": {value}})
+
+		if !strings.Contains(logged.String(), want) {
+			t.Errorf("%q: log = %q, want %s", value, logged.String(), want)
+		}
+	}
+}
+
+func TestClientVersionHeaderCannotBeACredential(t *testing.T) {
+	for _, name := range []string{"Authorization", "proxy-authorization", "Cookie", "X-API-Key"} {
+		t.Setenv("CLIENT_VERSION_HEADER", name)
+		loadConfig()
+		if err := setupURLRules(); err == nil {
+			t.Errorf("CLIENT_VERSION_HEADER=%s: no error, want one, as it would log a credential", name)
+		}
+	}
+	urlRules = nil
 }
