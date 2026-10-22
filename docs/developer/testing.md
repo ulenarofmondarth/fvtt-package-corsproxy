@@ -25,11 +25,11 @@ Every bug fix starts with a test that fails because of the bug.
 
 `tests/config/` checks the repository's configuration with Vitest, so mistakes show up in CI rather than at release time:
 
-- `commitlint.test.ts`: the commit message rules;
-- `release.test.ts`: the semantic-release configuration, the version bump (pnpm, offline, nothing but the version changes) and the release workflow's wiring;
-- `make.test.ts`: the Makefile's coverage gate;
-- `scripts.test.ts`: the type check scripts run tools the project installs, not global ones;
-- `action-pins.test.ts`: third-party actions are pinned to a commit (see {doc}`ci-cd`).
+- `commitlint.test.js`: the commit message rules;
+- `release.test.js`: the semantic-release configuration, the version bump (pnpm, offline, nothing but the version changes) and the release workflow's wiring;
+- `make.test.js`: the Makefile's coverage gate;
+- `scripts.test.js`: the package scripts run only tools the project installs, not global ones, and the tooling stays free of TypeScript;
+- `action-pins.test.js`: third-party actions are pinned to a commit (see {doc}`ci-cd`).
 
 ```shell
 pnpm test:repo

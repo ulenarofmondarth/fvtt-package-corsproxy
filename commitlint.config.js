@@ -1,4 +1,7 @@
-import { RuleConfigSeverity, type Rule, type UserConfig } from '@commitlint/types';
+/** @import { Rule, UserConfig } from '@commitlint/types' */
+
+/** commitlint's severity for a rule that fails the commit. */
+const ERROR = 2;
 
 /**
  * Words that show a subject is not in the imperative mood ("added", "adding", "adds").
@@ -20,8 +23,11 @@ const imperativeExceptions = new Set([
   'string',
 ]);
 
-/** Fails subjects that start with a past-tense, gerund or third-person verb. */
-const subjectImperative: Rule = ({ subject }) => {
+/**
+ * Fails subjects that start with a past-tense, gerund or third-person verb.
+ * @type {Rule}
+ */
+const subjectImperative = ({ subject }) => {
   const firstWord = subject?.trim().split(/\s+/)[0] ?? '';
   return [
     !nonImperative.test(firstWord) || imperativeExceptions.has(firstWord.toLowerCase()),
@@ -29,18 +35,23 @@ const subjectImperative: Rule = ({ subject }) => {
   ];
 };
 
-/** Dependabot writes long "bump x from y to z" messages; their format is not ours to police. */
-const isDependabot = (message: string): boolean => /^(?:build|ci)\([\w-]+\): bump /.test(message);
+/**
+ * Dependabot writes long "bump x from y to z" messages; their format is not ours to police.
+ * @param {string} message
+ * @returns {boolean}
+ */
+const isDependabot = message => /^(?:build|ci)\([\w-]+\): bump /.test(message);
 
-const config: UserConfig = {
+/** @type {UserConfig} */
+const config = {
   extends: ['@commitlint/config-conventional'],
   ignores: [isDependabot],
   plugins: [{ rules: { 'subject-imperative': subjectImperative } }],
   rules: {
-    'header-max-length': [RuleConfigSeverity.Error, 'always', 72],
-    'scope-empty': [RuleConfigSeverity.Error, 'never'],
-    'scope-case': [RuleConfigSeverity.Error, 'always', 'kebab-case'],
-    'subject-imperative': [RuleConfigSeverity.Error, 'always'],
+    'header-max-length': [ERROR, 'always', 72],
+    'scope-empty': [ERROR, 'never'],
+    'scope-case': [ERROR, 'always', 'kebab-case'],
+    'subject-imperative': [ERROR, 'always'],
   },
 };
 

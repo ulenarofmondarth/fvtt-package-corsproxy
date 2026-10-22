@@ -6,21 +6,27 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import config, { bumpVersionCmd, buildCmd } from '../../release.config.js';
 
-type PluginSpec = string | [string, Record<string, unknown>];
+/** @typedef {string | [string, Record<string, unknown>]} PluginSpec */
 
-/** The options a plugin is configured with, or `undefined` if it is not used. */
-function pluginOptions(name: string): Record<string, unknown> | undefined {
-  const plugins = (config.plugins ?? []) as PluginSpec[];
+/**
+ * The options a plugin is configured with, or `undefined` if it is not used.
+ * @param {string} name
+ * @returns {Record<string, unknown> | undefined}
+ */
+function pluginOptions(name) {
+  /** @type {PluginSpec[]} */
+  const plugins = config.plugins ?? [];
   const found = plugins.find(plugin => (Array.isArray(plugin) ? plugin[0] : plugin) === name);
   if (found === undefined) return undefined;
   return Array.isArray(found) ? found[1] : {};
 }
 
-interface Workflow {
-  jobs: Record<string, { if?: string; outputs?: Record<string, string>; steps?: { with?: Record<string, string> }[] }>;
-}
+/**
+ * @typedef {{ jobs: Record<string, { if?: string, outputs?: Record<string, string>, steps?: { with?: Record<string, string> }[] }> }} Workflow
+ */
 
-const workflow = parse(readFileSync('.github/workflows/release.yml', 'utf8')) as Workflow;
+/** @type {Workflow} */
+const workflow = parse(readFileSync('.github/workflows/release.yml', 'utf8'));
 
 describe('the release configuration', () => {
   it('releases from main only, tagged v<version> as upstream was', () => {
@@ -42,7 +48,7 @@ describe('the release configuration', () => {
   });
 
   it('attaches the binaries and their checksums that make dist builds', () => {
-    const assets = pluginOptions('@semantic-release/github')?.['assets'] as { path: string }[];
+    const assets = /** @type {{ path: string }[]} */ (pluginOptions('@semantic-release/github')?.['assets']);
     expect(assets.map(({ path }) => path)).toEqual(['dist/cors-proxy-*', 'dist/checksums.txt']);
     const makefile = readFileSync('Makefile', 'utf8');
     expect(makefile).toContain('-o "dist/cors-proxy-$$os-$$arch$$ext"');
@@ -69,7 +75,8 @@ describe('the release workflow', () => {
 });
 
 describe('the version bump', () => {
-  let dir: string | undefined;
+  /** @type {string | undefined} */
+  let dir;
 
   afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });

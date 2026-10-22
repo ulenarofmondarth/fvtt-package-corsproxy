@@ -11,7 +11,7 @@ Runs on every push to `dev`, on every pull request to `dev` or `main`, and as th
 | Job             | Checks                                                                                                         |
 | --------------- | -------------------------------------------------------------------------------------------------------------- |
 | Commit messages | commitlint over the pull request's commits (pull requests only)                                                |
-| Lint            | gofmt, `go vet`, golangci-lint, ESLint and the type check (TypeScript 7, then the 6 fallback) over the tooling, Prettier |
+| Lint            | gofmt, `go vet`, golangci-lint, ESLint over the tooling, Prettier                                              |
 | Tests           | the Go tests with the coverage gate (summary on the job page, uploaded to Codecov), then the tooling's tests   |
 | Build           | cross-compiles the release binaries (kept as an artifact); builds the container image and checks that it starts and reports its version |
 | Docs            | calls the Docs workflow                                                                                        |
@@ -50,7 +50,7 @@ The jobs that push to the protected branches authenticate as the release App (se
 
 ## Other workflows
 
-- **CodeQL** (`codeql.yml`): code scanning of the Go, the tooling's TypeScript and the workflows themselves, on pushes, pull requests and weekly.
+- **CodeQL** (`codeql.yml`): code scanning of the Go, the tooling's JavaScript and the workflows themselves, on pushes, pull requests and weekly.
 - **Dependency review** (`dependency-review.yml`): fails pull requests that add dependencies with known vulnerabilities.
 - **Dependabot** (`.github/dependabot.yml`): weekly updates of the Go modules, the base images, the tooling's npm packages (grouped), the documentation's Python requirements and base image, and the GitHub Actions, raised against `dev`.
-- **Third-party actions** are pinned to a full commit SHA with the release in a comment (`uses: docker/build-push-action@<sha> # v7.4.0`), because a tag can be moved by whoever controls the action's repository. Dependabot updates the SHA and the comment together. GitHub's own `actions/*` and `github/*` actions use version tags. `tests/config/action-pins.test.ts` enforces this; to add an action, look up the commit of the release (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`).
+- **Third-party actions** are pinned to a full commit SHA with the release in a comment (`uses: docker/build-push-action@<sha> # v7.4.0`), because a tag can be moved by whoever controls the action's repository. Dependabot updates the SHA and the comment together. GitHub's own `actions/*` and `github/*` actions use version tags. `tests/config/action-pins.test.js` enforces this; to add an action, look up the commit of the release (`gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`).

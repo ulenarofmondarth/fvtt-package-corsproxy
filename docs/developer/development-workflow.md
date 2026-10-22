@@ -11,7 +11,7 @@
 
 ## Commit messages
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org), with these extra rules, enforced by commitlint (`commitlint.config.ts`):
+Commits follow [Conventional Commits](https://www.conventionalcommits.org), with these extra rules, enforced by commitlint (`commitlint.config.js`):
 
 - a scope is required, in kebab-case: `feat(cache): …`;
 - the header is at most 72 characters;
@@ -34,7 +34,7 @@ Never edit the version in `package.json` or `CHANGELOG.md` by hand; the release 
 
 Husky installs them on `pnpm install`.
 
-- **pre-commit** runs lint-staged on the staged files (`.lintstagedrc.json`): for Go files, `gofmt -w`, `go vet`, `golangci-lint` and `go test`; for the tooling's TypeScript, ESLint, Prettier, the type check and the related tests; Prettier for JSON, Markdown and YAML.
+- **pre-commit** runs lint-staged on the staged files (`.lintstagedrc.json`): for Go files, `gofmt -w`, `go vet`, `golangci-lint` and `go test`; for the tooling's JavaScript, ESLint, Prettier and the related tests; Prettier for JSON, Markdown and YAML.
 - **prepare-commit-msg** starts Commitizen when you commit from a terminal without a message.
 - **commit-msg** runs commitlint.
 
@@ -51,7 +51,7 @@ git commit --no-verify -m "fix(proxy): describe the change"
 Before you push, fix whatever blocked the hooks, then revalidate:
 
 ```shell
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm test
+pnpm format:check && pnpm lint && pnpm test
 git commit --amend --no-edit
 ```
 
@@ -63,7 +63,6 @@ The first line repeats the pre-commit checks by hand; the amend alone would not,
 | -------------------- | ----------------------------------------------------------------------- |
 | `pnpm format:check`  | gofmt and Prettier (`pnpm format` fixes both)                           |
 | `pnpm lint`          | `go vet`, golangci-lint, and ESLint over the tooling; warnings fail     |
-| `pnpm typecheck`     | The tooling's TypeScript, with TypeScript 7 (`pnpm typecheck:fallback` uses TypeScript 6) |
 | `pnpm test`          | The Go tests, then the tooling's tests                                  |
 | `pnpm test:coverage` | The Go tests with the coverage gate, then the tooling's tests           |
 | `make smoke`         | A real server against real sites (needs the network; not run in CI)    |

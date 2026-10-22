@@ -32,16 +32,13 @@ updates:
       # still uses writer 8. Lift this once it upgrades.
       - dependency-name: conventional-changelog-conventionalcommits
         update-types: ['version-update:semver-major']
-      # The types must match the oldest Node.js we support (engines, .nvmrc). Moved by hand.
-      - dependency-name: '@types/node'
-        update-types: ['version-update:semver-major']
     groups:
-      typescript:
-        patterns: ['typescript', 'typescript7', 'vitest']
+      test:
+        patterns: ['vitest', 'yaml']
       lint:
-        patterns: ['eslint', '@eslint/*', 'eslint-*', 'typescript-eslint', 'globals', 'prettier']
+        patterns: ['eslint', '@eslint/*', 'eslint-*', 'globals', 'prettier']
       commit-tooling:
-        patterns: ['@commitlint/*', 'commitizen', 'cz-*', 'husky', 'lint-staged', 'jiti']
+        patterns: ['@commitlint/*', 'commitizen', 'cz-*', 'husky', 'lint-staged']
       release:
         patterns: ['semantic-release', '@semantic-release/*', 'conventional-changelog-*']
 

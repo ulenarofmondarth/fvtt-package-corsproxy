@@ -4,8 +4,11 @@ import { describe, expect, it } from 'vitest';
 /**
  * The coverage gate in the Makefile compares a percentage with awk. Checked on the comparison
  * alone, without running the Go tests: `make -n` would only print the recipe.
+ * @param {string} total
+ * @param {string} min
+ * @returns {boolean}
  */
-function gate(total: string, min: string): boolean {
+function gate(total, min) {
   try {
     execFileSync('awk', ['-v', `total=${total}`, '-v', `min=${min}`, 'BEGIN { exit !(total >= min) }']);
     return true;

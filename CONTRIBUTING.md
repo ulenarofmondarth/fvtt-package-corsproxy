@@ -33,7 +33,6 @@ Keep pull requests small and focused, and update the documentation alongside the
 | -------------------- | ------------------------------------------------------------------- |
 | `pnpm format:check`  | gofmt and Prettier (`pnpm format` fixes both)                       |
 | `pnpm lint`          | `go vet`, golangci-lint, and ESLint over the tooling; warnings fail |
-| `pnpm typecheck`     | The tooling's TypeScript, with TypeScript 7 (`:fallback` uses 6)    |
 | `pnpm test`          | The Go tests, then the tests of the repository's tooling            |
 | `pnpm test:coverage` | The same, with the Go coverage gate                                 |
 | `make dist`          | The release binaries cross-compile                                  |
@@ -72,7 +71,7 @@ Releases are fully automated: merging `dev` into `main` runs CI and then semanti
 
 ## Git hooks
 
-The pre-commit hook runs gofmt, `go vet`, golangci-lint and the Go tests when Go files are staged, and Prettier, ESLint, the type check and the related tests for the tooling. The commit-msg hook runs commitlint.
+The pre-commit hook runs gofmt, `go vet`, golangci-lint and the Go tests when Go files are staged, and Prettier, ESLint and the related tests for the tooling's JavaScript. The commit-msg hook runs commitlint.
 
 ### Emergency bypass
 
@@ -85,7 +84,7 @@ git commit --no-verify -m "fix(scope): describe the change"
 Before you push, fix whatever blocked the hooks, then revalidate:
 
 ```shell
-pnpm format:check && pnpm lint && pnpm typecheck && pnpm test
+pnpm format:check && pnpm lint && pnpm test
 git commit --amend --no-edit
 ```
 

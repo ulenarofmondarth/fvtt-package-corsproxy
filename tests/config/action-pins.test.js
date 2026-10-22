@@ -12,8 +12,11 @@ import { describe, expect, it } from 'vitest';
 
 const trustedOwners = new Set(['actions', 'github']);
 
-/** Every workflow and composite action in .github. */
-function workflowFiles(): string[] {
+/**
+ * Every workflow and composite action in .github.
+ * @returns {string[]}
+ */
+function workflowFiles() {
   const workflows = readdirSync('.github/workflows')
     .filter(name => /\.ya?ml$/.test(name))
     .map(name => join('.github/workflows', name));
@@ -21,8 +24,11 @@ function workflowFiles(): string[] {
   return [...workflows, ...actions];
 }
 
-/** The `uses:` references to actions in other repositories, with where they are. */
-function thirdPartyUses(): { where: string; ref: string; comment: string }[] {
+/**
+ * The `uses:` references to actions in other repositories, with where they are.
+ * @returns {{ where: string, ref: string, comment: string }[]}
+ */
+function thirdPartyUses() {
   return workflowFiles().flatMap(file =>
     readFileSync(file, 'utf8')
       .split('\n')

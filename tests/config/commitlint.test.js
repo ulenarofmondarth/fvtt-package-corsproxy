@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import config from '../../commitlint.config.js';
 
-type Rule = (parsed: { subject: string | null }) => [boolean, string?];
+/** @typedef {(parsed: { subject: string | null }) => [boolean, string?]} Rule */
 
 const rule = config.plugins?.[0];
-const subjectImperative = (typeof rule === 'object' ? rule.rules['subject-imperative'] : undefined) as Rule | undefined;
-const isIgnored = (message: string): boolean => config.ignores?.some(ignore => ignore(message)) ?? false;
+/** @type {Rule | undefined} */
+const subjectImperative = typeof rule === 'object' ? rule.rules['subject-imperative'] : undefined;
+/**
+ * @param {string} message
+ * @returns {boolean}
+ */
+const isIgnored = message => config.ignores?.some(ignore => ignore(message)) ?? false;
 
 describe('commitlint configuration', () => {
   it.each(['add the release workflow', 'fix a crash', 'embed the handler', 'need a test', 'speed up the build'])(
