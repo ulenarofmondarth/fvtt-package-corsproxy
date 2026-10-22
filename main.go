@@ -58,6 +58,15 @@ type Config struct {
 	CacheMaxEntryBytes int64
 	// GitHubToken authenticates the proxy's requests to GitHub's API (see github.go).
 	GitHubToken string
+	// AllowedURLs narrow AllowedHosts to host and path patterns (see allowlist.go).
+	AllowedURLs []string
+	// URLAllowlistMode is "enforce", refusing unlisted URLs, or "report", only logging them.
+	URLAllowlistMode string
+	// LogUnlistedURLs logs each URL not in AllowedURLs, refused or reported.
+	LogUnlistedURLs bool
+	// ClientVersionHeader names a request header whose value is logged with unlisted URLs,
+	// such as a client's version, and is never forwarded upstream.
+	ClientVersionHeader string
 }
 
 var (
@@ -81,6 +90,9 @@ type RateLimit struct {
 
 func main() {
 	loadConfig()
+	if err := setupURLRules(); err != nil {
+		log.Fatalf("❌ %v", err)
+	}
 
 	http.HandleFunc("/", corsProxyHandler)
 	http.HandleFunc("/health", healthCheckHandler)
@@ -99,6 +111,9 @@ func main() {
 	}
 	if len(config.AllowedHosts) > 0 {
 		log.Printf("✅ Allowed hosts: %v", config.AllowedHosts)
+	}
+	if len(urlRules) > 0 {
+		log.Printf("📜 Allowed URLs: %d pattern(s), %s", len(urlRules), config.URLAllowlistMode)
 	}
 	if len(config.BlockedHosts) > 0 {
 		log.Printf("🚫 Blocked hosts: %v", config.BlockedHosts)
@@ -153,6 +168,10 @@ func loadConfig() {
 		CacheMaxBytes:        getEnvInt64("CACHE_MAX_BYTES", 64*1024*1024),      // 64MB
 		CacheMaxEntryBytes:   getEnvInt64("CACHE_MAX_ENTRY_BYTES", 2*1024*1024), // 2MB
 		GitHubToken:          getEnv("GITHUB_TOKEN", ""),
+		AllowedURLs:          getEnvList("ALLOWED_URLS", ""),
+		URLAllowlistMode:     getEnv("URL_ALLOWLIST_MODE", urlModeEnforce),
+		LogUnlistedURLs:      getEnvBool("LOG_UNLISTED_URLS", true),
+		ClientVersionHeader:  getEnv("CLIENT_VERSION_HEADER", ""),
 	}
 }
 
@@ -367,8 +386,14 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	if !isHostAllowed(targetURL) {
 		http.Error(w, `{"error":"This host is not allowed"}`, http.StatusForbidden)
 		if config.EnableVerboseLog {
-			log.Printf("🚫 Blocked request to: %s", targetURL)
+			log.Printf("🚫 Blocked request to: %q", targetURL)
 		}
+		return
+	}
+
+	// Check the URL itself against ALLOWED_URLS. isHostAllowed has parsed it already.
+	if target, _ := url.Parse(targetURL); !checkURL(r, target) {
+		http.Error(w, `{"error":"This URL is not allowed"}`, http.StatusForbidden)
 		return
 	}
 
@@ -431,7 +456,7 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if config.EnableVerboseLog {
-		log.Printf("%s %s -> %d (%d bytes) %s", r.Method, targetURL, resp.status, written, cacheState)
+		log.Printf("%s %q -> %d (%d bytes) %s client %q", r.Method, targetURL, resp.status, written, cacheState, clientVersion(r))
 	}
 }
 
@@ -455,7 +480,7 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 	// A GET, with no body: the caller's body, if it sent one, is never forwarded.
 	proxyReq, err := http.NewRequestWithContext(context.Background(), http.MethodGet, targetURL, http.NoBody)
 	if err != nil {
-		log.Printf("Error creating request: %v", err)
+		log.Printf("Error creating request: %q", err.Error())
 		return nil, &upstreamError{http.StatusBadRequest, fmt.Sprintf(`{"error":"Invalid URL: %s"}`, err.Error()), err}
 	}
 
@@ -465,8 +490,9 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 	// for whatever the caller had them set for, not for a third party we
 	// didn't choose), and X-API-Key (if REQUIRE_API_KEY is on, this is the
 	// proxy's own configured key — forwarding it would leak it to the target).
+	clientHeader := http.CanonicalHeaderKey(config.ClientVersionHeader)
 	for key, values := range r.Header {
-		if nonForwardedHeaders[key] {
+		if nonForwardedHeaders[key] || key == clientHeader {
 			continue
 		}
 		for _, value := range values {
@@ -489,6 +515,9 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 			if !isHostAllowed(req.URL.String()) {
 				return fmt.Errorf("redirect to a host that is not allowed")
 			}
+			if !checkURL(r, req.URL) {
+				return fmt.Errorf("redirect to a URL that is not allowed")
+			}
 			// The token goes to GitHub's API only, wherever the redirect leads.
 			authenticateGitHub(req)
 			return nil
@@ -498,7 +527,7 @@ func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cache
 	resp, err := client.Do(proxyReq)
 	if err != nil {
 		if config.EnableVerboseLog {
-			log.Printf("Error fetching URL %s: %v", targetURL, err)
+			log.Printf("Error fetching URL %q: %q", targetURL, err.Error())
 		}
 		if errors.Is(err, errPrivateAddress) {
 			return nil, &upstreamError{http.StatusForbidden, `{"error":"This host is not allowed"}`, err}

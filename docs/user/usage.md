@@ -37,6 +37,7 @@ The request's headers are forwarded, except `Host`, `Authorization`, `Cookie` an
 | `405`  | `Only GET requests are proxied`            | A method other than `GET` (or the `OPTIONS` preflight) |
 | `401`  | `Missing or invalid API key`               | `REQUIRE_API_KEY` is on, and the key is missing or wrong |
 | `403`  | `This host is not allowed`                 | The target, or a redirect, is not allowed             |
+| `403`  | `This URL is not allowed`                  | The target matches no `ALLOWED_URLS` pattern (a redirect to one gets `502`) |
 | `429`  | `Rate limit exceeded…`                     | `RATE_LIMIT_PER_MINUTE` was reached                   |
 | `502`  | `Failed to fetch URL…`, `…too large`       | The upstream could not be reached, or answered too much |
 | `503`  | `Daily request limit reached…`             | `DAILY_REQUEST_LIMIT` was reached                     |

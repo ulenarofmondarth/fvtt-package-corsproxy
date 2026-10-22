@@ -6,7 +6,7 @@ VERSION ?= dev
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # The coverage gate (percent of statements). Ratchet it up as coverage improves; never down.
-COVERAGE_MIN ?= 86
+COVERAGE_MIN ?= 88
 
 # The platforms each release ships a binary for.
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
@@ -117,5 +117,9 @@ config:
 	@echo "CACHE_MAX_STALE: $${CACHE_MAX_STALE:-24h}"
 	@echo "CACHE_MAX_BYTES: $${CACHE_MAX_BYTES:-67108864}"
 	@echo "CACHE_MAX_ENTRY_BYTES: $${CACHE_MAX_ENTRY_BYTES:-2097152}"
+	@echo "ALLOWED_URLS: $${ALLOWED_URLS:-}"
+	@echo "URL_ALLOWLIST_MODE: $${URL_ALLOWLIST_MODE:-enforce}"
+	@echo "LOG_UNLISTED_URLS: $${LOG_UNLISTED_URLS:-true}"
+	@echo "CLIENT_VERSION_HEADER: $${CLIENT_VERSION_HEADER:-}"
 	@echo "GITHUB_TOKEN: $$( [ -n "$${GITHUB_TOKEN}" ] && echo set || echo unset)"
 	@echo "VERBOSE_LOGGING: $${VERBOSE_LOGGING:-false}"
