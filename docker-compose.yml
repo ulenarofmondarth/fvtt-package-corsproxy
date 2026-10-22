@@ -19,6 +19,8 @@ services:
       # Rate Limiting - uncomment for production
       # - RATE_LIMIT_PER_MINUTE=100
       # Logging
+      # Response cache - uncomment to share upstream answers between clients
+      # - CACHE_TTL=1h
       - VERBOSE_LOGGING=false
     restart: unless-stopped
     healthcheck:

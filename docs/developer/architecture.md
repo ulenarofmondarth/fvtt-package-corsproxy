@@ -7,7 +7,9 @@ flowchart LR
   client[Browser] -->|"/?url=…"| handler[corsProxyHandler]
   handler --> checks{"API key, daily limit,<br>rate limit, URL, host"}
   checks -->|refused| error[4xx / 5xx from the proxy]
-  checks -->|allowed| transport[Shared transport<br>safe dialer]
+  checks -->|allowed| cache{Response cache}
+  cache -->|fresh| response
+  cache -->|missing or expired| transport[Shared transport<br>safe dialer]
   transport --> upstream[Upstream]
   upstream --> response[Response, with CORS headers]
   response --> client
@@ -21,10 +23,15 @@ flowchart LR
 2. checks the API key, before anything that spends a shared budget, so an unauthenticated caller cannot use it up;
 3. counts the request against the daily limit, then the per-IP rate limit;
 4. checks the `url` parameter and its host against `BLOCKED_HOSTS` and `ALLOWED_HOSTS`;
-5. builds the upstream request, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`;
-6. sends it through the shared transport, following redirects only to allowed hosts;
-7. reads the response, refusing it if it is larger than `MAX_REQUEST_SIZE`, before writing anything;
-8. copies the status, headers (without `Set-Cookie`) and body back, with the sandboxing headers.
+5. answers a plain `GET` from the response cache (`cache.go`), when it is on and has a fresh answer;
+6. otherwise fetches it (`fetchUpstream`): builds the upstream request, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`, sends it through the shared transport, following redirects only to allowed hosts, and reads the whole response, refusing it if it is larger than `MAX_REQUEST_SIZE`;
+7. copies the status, headers (without `Set-Cookie`) and body back, with the sandboxing headers, and `X-Cache` and `Age` when the cache is on.
+
+## The response cache
+
+`memoryCache` (`cache.go`) is an LRU of whole answers, bounded by `CACHE_MAX_BYTES`, keyed on the target URL with the request's `Accept` and `Accept-Encoding`. Its `get` either serves a fresh answer, waits on the fetch already under way for the same key, or becomes that fetch itself, so a key is only ever fetched once at a time. `refresh` makes the fetch, conditional when an expired answer has an `ETag` or `Last-Modified`, and decides what to keep and what to serve: a `304` renews the expired answer, a refusal or failure serves it stale within `CACHE_MAX_STALE`, and anything else replaces it, or removes it if it cannot be kept.
+
+The checks before it (API key, limits, host) run on every request, hits included, so the cache never answers a request the proxy would refuse. Its clock is a field, `now`, so the tests move time by hand.
 
 ## Safety
 

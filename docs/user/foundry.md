@@ -33,6 +33,14 @@ In Foundry, open **Game Settings** → **Configure Settings** → EMMA's **Versi
 
 GitHub allows 60 unauthenticated API requests an hour per IP address. Every client of the proxy shares the proxy's IP address, so they share those 60 requests too. A request over the limit gets GitHub's own `403`, `API rate limit exceeded for <ip>`, which the proxy passes on. That is different from the proxy's own `403` for a host that is not allowed: compare the response bodies.
 
+Turn on the {ref}`response cache <response-cache>` to stay well inside the limit:
+
+```shell
+CACHE_TTL=1h
+```
+
+Each release list is then fetched from GitHub at most once an hour, whichever clients ask for it, and revalidating an unchanged one costs little. When GitHub refuses all the same, clients are given the last answer it gave, for up to `CACHE_MAX_STALE`, rather than the `403`.
+
 :::{todo}
-Cache upstream responses, so that most lookups never reach GitHub, and authenticate to GitHub with a token, to raise the limit to 5,000 requests an hour.
+Authenticate to GitHub with a token, to raise the limit to 5,000 requests an hour.
 :::

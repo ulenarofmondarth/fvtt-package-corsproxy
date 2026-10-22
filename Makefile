@@ -6,7 +6,7 @@ VERSION ?= dev
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # The coverage gate (percent of statements). Ratchet it up as coverage improves; never down.
-COVERAGE_MIN ?= 82
+COVERAGE_MIN ?= 86
 
 # The platforms each release ships a binary for.
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
@@ -112,4 +112,9 @@ config:
 	@echo "TRUST_PROXY_HEADERS: $${TRUST_PROXY_HEADERS:-false}"
 	@echo "REQUIRE_API_KEY: $${REQUIRE_API_KEY:-false}"
 	@echo "DAILY_REQUEST_LIMIT: $${DAILY_REQUEST_LIMIT:-0}"
+	@echo "CACHE_TTL: $${CACHE_TTL:-0}"
+	@echo "CACHE_NEGATIVE_TTL: $${CACHE_NEGATIVE_TTL:-5m}"
+	@echo "CACHE_MAX_STALE: $${CACHE_MAX_STALE:-24h}"
+	@echo "CACHE_MAX_BYTES: $${CACHE_MAX_BYTES:-67108864}"
+	@echo "CACHE_MAX_ENTRY_BYTES: $${CACHE_MAX_ENTRY_BYTES:-2097152}"
 	@echo "VERBOSE_LOGGING: $${VERBOSE_LOGGING:-false}"

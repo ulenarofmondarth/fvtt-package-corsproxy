@@ -19,6 +19,11 @@ The proxy is configured entirely through environment variables. `.env.example` i
 | `REQUIRE_API_KEY`        | `false`    | Require one of `API_KEYS` on every proxied request                                                                |
 | `API_KEYS`               |            | The accepted API keys, comma-separated                                                                            |
 | `DAILY_REQUEST_LIMIT`    | `0`        | The most proxied requests per rolling 24 hours, across all clients; `0` turns it off                              |
+| `CACHE_TTL`              | `0`        | How long an upstream answer is served from the {ref}`response cache <response-cache>`; `0` turns it off           |
+| `CACHE_NEGATIVE_TTL`     | `5m`       | The same, for a 404 or 410 answer                                                                                 |
+| `CACHE_MAX_STALE`        | `24h`      | How long past `CACHE_TTL` an answer is still served when the upstream refuses or cannot be reached                |
+| `CACHE_MAX_BYTES`        | `67108864` | The most memory the cache uses, in bytes (64 MB)                                                                  |
+| `CACHE_MAX_ENTRY_BYTES`  | `2097152`  | The largest answer the cache keeps, in bytes (2 MB)                                                               |
 | `VERBOSE_LOGGING`        | `false`    | Log every request                                                                                                 |
 
 ## Production checklist
@@ -30,6 +35,7 @@ The defaults are wide open, so that `go run .` works with no setup. Before expos
 - **Set `RATE_LIMIT_PER_MINUTE`** to bound abuse from one IP, and set `TRUST_PROXY_HEADERS=true` with it if, and only if, the proxy is behind a reverse proxy or platform that sets `X-Forwarded-For`. Otherwise anyone can bypass the limit by sending the header themselves.
 - **Set `DAILY_REQUEST_LIMIT`** as a cost backstop, if you pay for traffic or compute.
 - **Turn on `REQUIRE_API_KEY`** when the proxy serves your own games rather than the public.
+- **Set `CACHE_TTL`** if many clients look up the same things, such as package versions, so the upstreams see one request where they would have seen many.
 - **Leave `ALLOW_PRIVATE_NETWORKS` off**, unless the proxy must reach internal addresses: otherwise it is an SSRF hole.
 - **Run it behind HTTPS.**
 - **Watch the startup log.** A `⚠️  Running with open defaults` line lists which of these are still off.
@@ -95,3 +101,40 @@ REQUEST_TIMEOUT=15s
 ```
 
 An upstream response larger than `MAX_REQUEST_SIZE` is refused with `502`, never cut short.
+
+(response-cache)=
+
+## Response cache
+
+```shell
+# Serve each upstream answer for an hour before fetching it again
+CACHE_TTL=1h
+```
+
+The cache keeps upstream answers in memory, shared by every client, so a URL many clients ask for is fetched once per `CACHE_TTL` instead of once per request. It is off unless `CACHE_TTL` is set.
+
+What it keeps:
+
+- answers to plain `GET` requests. A `POST`, or a request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like), goes straight to the upstream;
+- `200` answers for `CACHE_TTL`, and `404` and `410` answers for `CACHE_NEGATIVE_TTL`. Other answers are passed on and not kept;
+- not answers that set cookies, are marked `Cache-Control: no-store`, or say `Vary: *`, nor any larger than `CACHE_MAX_ENTRY_BYTES`.
+
+An answer is kept for its URL together with the request's `Accept` and `Accept-Encoding` headers. The proxy never forwards credentials, so nothing else can make two clients' answers differ.
+
+Once an answer expires, the next request for it revalidates it: the proxy asks the upstream whether it has changed (`If-None-Match` with its `ETag`, or `If-Modified-Since`), and a `304` renews it without downloading it again. If the upstream refuses instead (`403`, as GitHub's rate limit does, `429` or a `5xx`) or cannot be reached, the expired answer is served, for up to `CACHE_MAX_STALE` past its expiry. A `404` replaces it.
+
+While one request for an answer is with the upstream, others for the same answer wait for it rather than sending their own. When the cache is full, the least recently used answers make room.
+
+Every answer says where it came from, in an `X-Cache` header that the client's script can read:
+
+| `X-Cache`     | Meaning                                                               |
+| ------------- | --------------------------------------------------------------------- |
+| `MISS`        | Fetched from the upstream                                             |
+| `HIT`         | Served from the cache                                                 |
+| `REVALIDATED` | Expired, and the upstream confirmed it unchanged                      |
+| `STALE`       | Expired, and served because the upstream refused or could not be reached |
+| `BYPASS`      | Not a request the cache answers                                       |
+
+Answers from the cache also carry `Age`, the seconds since the upstream last gave or confirmed them.
+
+Clients cannot make the proxy skip the cache: it protects the upstreams' budgets, which every client shares. The cache lives in memory, so it is empty after a restart, and each replica keeps its own.
