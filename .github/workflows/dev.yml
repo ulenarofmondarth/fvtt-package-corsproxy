@@ -62,6 +62,10 @@ jobs:
   unit:
     name: Tests
     runs-on: ubuntu-latest
+    env:
+      # Secrets cannot be read in `if:` or `with:` conditions directly. Runs without the secret,
+      # such as Dependabot's and forks', have nowhere to upload to.
+      HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-go
@@ -84,7 +88,8 @@ jobs:
         with:
           files: coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          # With a token, a failed upload is a broken secret or a Codecov outage, so say so.
+          fail_ci_if_error: ${{ env.HAS_CODECOV_TOKEN == 'true' }}
       - name: Tests of the repository's tooling
         run: pnpm test:repo
 
