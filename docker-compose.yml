@@ -21,6 +21,8 @@ services:
       # Logging
       # Response cache - uncomment to share upstream answers between clients
       # - CACHE_TTL=1h
+      # GitHub API token - set it in .env rather than here (see docs/user/foundry.md)
+      # - GITHUB_TOKEN=${GITHUB_TOKEN}
       - VERBOSE_LOGGING=false
     restart: unless-stopped
     healthcheck:

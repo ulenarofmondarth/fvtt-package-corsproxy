@@ -24,12 +24,14 @@ flowchart LR
 3. counts the request against the daily limit, then the per-IP rate limit;
 4. checks the `url` parameter and its host against `BLOCKED_HOSTS` and `ALLOWED_HOSTS`;
 5. answers a plain `GET` from the response cache (`cache.go`), when it is on and has a fresh answer;
-6. otherwise fetches it (`fetchUpstream`): builds the upstream request, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`, sends it through the shared transport, following redirects only to allowed hosts, and reads the whole response, refusing it if it is larger than `MAX_REQUEST_SIZE`;
+6. otherwise fetches it (`fetchUpstream`): builds the upstream request, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`, adds the GitHub token for GitHub's API (`github.go`), sends it through the shared transport, following redirects only to allowed hosts, and reads the whole response, refusing it if it is larger than `MAX_REQUEST_SIZE`;
 7. copies the status, headers (without `Set-Cookie`) and body back, with the sandboxing headers, and `X-Cache` and `Age` when the cache is on.
 
 ## The response cache
 
 `memoryCache` (`cache.go`) is an LRU of whole answers, bounded by `CACHE_MAX_BYTES`, keyed on the target URL with the request's `Accept` and `Accept-Encoding`. Its `get` either serves a fresh answer, waits on the fetch already under way for the same key, or becomes that fetch itself, so a key is only ever fetched once at a time. `refresh` makes the fetch, conditional when an expired answer has an `ETag` or `Last-Modified`, and decides what to keep and what to serve: a `304` renews the expired answer, a refusal or failure serves it stale within `CACHE_MAX_STALE`, and anything else replaces it, or removes it if it cannot be kept.
+
+The cache keeps answers marked `Cache-Control: private`, and honours only `no-store`. GitHub marks every authenticated answer `private`, but the proxy's token reads public repositories only and clients' credentials are never forwarded, so the answers are the same for every client.
 
 The checks before it (API key, limits, host) run on every request, hits included, so the cache never answers a request the proxy would refuse. Its clock is a field, `now`, so the tests move time by hand.
 
@@ -38,6 +40,10 @@ The checks before it (API key, limits, host) run on every request, hits included
 - **One shared transport** (`transport()`) for every upstream request, so connections are reused.
 - **A safe dialer** (`safeDialer()`) checks the address actually connected to, after DNS resolution, on every connection. That refuses private addresses even through a redirect or DNS rebinding, which checking the hostname alone cannot.
 - **Bounded state**: the rate limiter drops expired windows once it tracks more than 10,000 IPs.
+
+## The GitHub token
+
+`authenticateGitHub` (`github.go`) sets `Authorization: Bearer <GITHUB_TOKEN>` on a request whose host is `api.github.com` (`githubAPIHost`), and removes `Authorization` from any other. It runs on the first request and again on every redirect, in `CheckRedirect`. That matters because Go keeps `Authorization` on a redirect to a subdomain of the original host, and the token is for the API host alone.
 
 ## Configuration
 
