@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v2.0.0...v2.1.0) (2026-10-22)
+
+### Features
+
+* **cache:** answer clients' revalidations from the cache ([4d7de18](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/commit/4d7de18f0da3015861447e5b1b086e061fe50d37))
+
 ## [2.0.0](https://github.com/ulenarofmondarth/fvtt-package-corsproxy/compare/v1.4.0...v2.0.0) (2026-10-22)
 
 ### ⚠ BREAKING CHANGES

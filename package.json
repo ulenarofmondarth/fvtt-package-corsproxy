@@ -1,6 +1,6 @@
 {
   "name": "fvtt-package-corsproxy",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "A caching CORS proxy for Foundry VTT package lookups. The proxy is Go; this package holds the repository's tooling: commit hooks, semantic-release and the tests of its configuration.",
   "author": "Ulenar of Mondarth",
