@@ -41,7 +41,7 @@ An App made for another repository can be installed on this one too, instead of 
 | ------------------------- | -------- | ------- | ----------------------------------------------------------------------------- |
 | `RELEASE_APP_CLIENT_ID`   | Variable | Release | The release App's Client ID                                                   |
 | `RELEASE_APP_PRIVATE_KEY` | Secret   | Release | The release App's private key                                                 |
-| `CODECOV_TOKEN`           | Secret   | Dev CI  | Uploads coverage to [Codecov](https://about.codecov.io). Optional: CI passes without it |
+| `CODECOV_TOKEN`           | Secret   | Dev CI  | Uploads coverage to [Codecov](https://about.codecov.io). Optional: CI passes without it, but once it is set a failed upload fails CI. Set only the token, Codecov's repository upload token, nothing around it |
 
 `GITHUB_TOKEN` covers everything else, including pushing the container image to ghcr.io.
 

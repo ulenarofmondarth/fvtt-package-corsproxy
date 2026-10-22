@@ -18,6 +18,12 @@ ALLOWED_HOSTS=foundryvtt.com,api.github.com,github.com,githubusercontent.com,git
 
 `foundryvtt.com` covers `r2.foundryvtt.com`, and `githubusercontent.com` covers `objects.`, `release-assets.` and `raw.githubusercontent.com`. Add the hosts of any other manifest URLs your packages use. A request for a host that is not allowed gets `403` with `{"error":"This host is not allowed"}`.
 
+To limit the proxy to the URLs EMMA fetches, start from these patterns, with `URL_ALLOWLIST_MODE=report`, and refine them from the log (see {ref}`url-allowlist`):
+
+```shell
+ALLOWED_URLS=api.github.com/repos/*/*/releases,github.com/*/*/releases/download/**,*.githubusercontent.com/**,gitlab.com/api/v4/projects/*/releases,r2.foundryvtt.com/package-api-public/**,foundryvtt.com/releases,*/**/module.json,*/**/system.json
+```
+
 Set `ALLOWED_ORIGINS` to the origin your players open Foundry at, such as `https://foundry.example.com`, and turn on `REQUIRE_API_KEY` (see {doc}`configuration`).
 
 ## Setting it up in EMMA
@@ -56,7 +62,7 @@ The proxy then sends `Authorization: Bearer <token>` with every request to `api.
 Every client of the proxy can read whatever the token can, and with the cache on the answers are shared between them. So give it access to public repositories only:
 
 1. On GitHub, open **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. Name it for the proxy, and give it an expiry date. Remember to replace it before then.
+2. Name it for the proxy, and give it an expiry date within a year. An organization can refuse fine-grained tokens that last longer, even for its public repositories (see {ref}`token-refused-by-organization`). Remember to replace it before it expires.
 3. Under **Repository access**, choose **Public repositories**. Leave every permission at **No access**: reading public releases needs none.
 4. Generate it, and give it to the proxy as `GITHUB_TOKEN`, from a secret store or an environment file only root can read, never from a file in a repository.
 

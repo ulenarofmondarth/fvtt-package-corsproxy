@@ -29,6 +29,7 @@ Every bug fix starts with a test that fails because of the bug.
 - `release.test.js`: the semantic-release configuration, the version bump (pnpm, offline, nothing but the version changes) and the release workflow's wiring;
 - `make.test.js`: the Makefile's coverage gate;
 - `scripts.test.js`: the package scripts run only tools the project installs, not global ones, and the tooling stays free of TypeScript;
+- `ci.test.js`: the Codecov upload fails CI when a token is set, and only then;
 - `action-pins.test.js`: third-party actions are pinned to a commit (see {doc}`ci-cd`).
 
 ```shell

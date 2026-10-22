@@ -20,12 +20,13 @@ flowchart LR
 `corsProxyHandler` (`main.go`) handles every request except `/health`, in this order:
 
 1. sets the CORS headers, and answers a preflight (`OPTIONS`) at once;
-2. checks the API key, before anything that spends a shared budget, so an unauthenticated caller cannot use it up;
-3. counts the request against the daily limit, then the per-IP rate limit;
-4. checks the `url` parameter and its host against `BLOCKED_HOSTS` and `ALLOWED_HOSTS`;
-5. answers a plain `GET` from the response cache (`cache.go`), when it is on and has a fresh answer;
-6. otherwise fetches it (`fetchUpstream`): builds the upstream request, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`, adds the GitHub token for GitHub's API (`github.go`), sends it through the shared transport, following redirects only to allowed hosts, and reads the whole response, refusing it if it is larger than `MAX_REQUEST_SIZE`;
-7. copies the status, headers (without `Set-Cookie`) and body back, with the sandboxing headers, and `X-Cache` and `Age` when the cache is on.
+2. refuses any method but `GET` with `405`, before anything that spends a budget;
+3. checks the API key, before anything that spends a shared budget, so an unauthenticated caller cannot use it up;
+4. counts the request against the daily limit, then the per-IP rate limit;
+5. checks the `url` parameter and its host against `BLOCKED_HOSTS` and `ALLOWED_HOSTS`, then the whole URL against `ALLOWED_URLS` (`allowlist.go`), logging it if it matches none;
+6. answers a `GET` from the response cache (`cache.go`), when it is on and has a fresh answer;
+7. otherwise fetches it (`fetchUpstream`): builds the upstream request, a `GET` with no body, forwarding every header except `Host`, `Authorization`, `Cookie` and `X-API-Key`, adds the GitHub token for GitHub's API (`github.go`), sends it through the shared transport, following redirects only to allowed hosts and URLs, and reads the whole response, refusing it if it is larger than `MAX_REQUEST_SIZE`;
+8. copies the status, headers (without `Set-Cookie`) and body back, with the sandboxing headers, and `X-Cache` and `Age` when the cache is on.
 
 ## The response cache
 

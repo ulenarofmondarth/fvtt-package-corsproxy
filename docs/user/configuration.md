@@ -12,6 +12,10 @@ The proxy is configured entirely through environment variables. `.env.example` i
 | `MAX_REDIRECTS`          | `10`       | The most redirects followed                                                                                       |
 | `ALLOWED_ORIGINS`        | `*`        | The origins allowed to call the proxy: `*` for any, or a comma-separated list                                     |
 | `ALLOWED_HOSTS`          |            | The hosts the proxy may fetch from, comma-separated; empty allows any public host                                 |
+| `ALLOWED_URLS`           |            | Host and path patterns the proxy may fetch, comma-separated; empty allows any URL on an allowed host (see {ref}`url-allowlist`) |
+| `URL_ALLOWLIST_MODE`     | `enforce`  | `enforce` refuses URLs not in `ALLOWED_URLS`; `report` only logs them                                             |
+| `LOG_UNLISTED_URLS`      | `true`     | Log each URL not in `ALLOWED_URLS`, refused or reported                                                           |
+| `CLIENT_VERSION_HEADER`  |            | A request header, such as a client's version, logged with unlisted URLs and never forwarded                       |
 | `BLOCKED_HOSTS`          |            | Hosts the proxy never fetches from, comma-separated                                                               |
 | `ALLOW_PRIVATE_NETWORKS` | `false`    | Allow fetching from loopback, private and link-local addresses (trusted internal deployments only)                |
 | `RATE_LIMIT_PER_MINUTE`  | `0`        | Requests per minute per client IP; `0` turns it off                                                               |
@@ -33,6 +37,7 @@ The defaults are wide open, so that `go run .` works with no setup. Before expos
 
 - **Set `ALLOWED_ORIGINS`** to your Foundry server's origin, such as `https://foundry.example.com`. The default `*` lets any website's JavaScript use your proxy.
 - **Set `ALLOWED_HOSTS`** to the hosts you intend to fetch from (see {doc}`foundry`). An empty list lets the proxy reach any public host, which makes it attractive as a free open relay.
+- **Set `ALLOWED_URLS`** to the URLs your clients need, so that a key that leaks is of little use for anything else. Find them first with `URL_ALLOWLIST_MODE=report`.
 - **Set `RATE_LIMIT_PER_MINUTE`** to bound abuse from one IP, and set `TRUST_PROXY_HEADERS=true` with it if, and only if, the proxy is behind a reverse proxy or platform that sets `X-Forwarded-For`. Otherwise anyone can bypass the limit by sending the header themselves.
 - **Set `DAILY_REQUEST_LIMIT`** as a cost backstop, if you pay for traffic or compute.
 - **Turn on `REQUIRE_API_KEY`** when the proxy serves your own games rather than the public.
@@ -54,6 +59,46 @@ BLOCKED_HOSTS=internal.example.com
 A rule matches the host and its subdomains: `githubusercontent.com` matches `objects.githubusercontent.com`, but not `githubusercontent.com.evil.net`. Redirects are checked against the same rules.
 
 Private, loopback, link-local (including the cloud metadata address 169.254.169.254) and CGNAT addresses are always refused, checked on the resolved IP of every connection, redirects included. Set `ALLOW_PRIVATE_NETWORKS=true` only if the proxy must reach internal services.
+
+(url-allowlist)=
+
+## URL allowlist
+
+```shell
+ALLOWED_URLS=api.github.com/repos/*/*/releases,github.com/*/*/releases/download/**,*.githubusercontent.com/**
+```
+
+`ALLOWED_HOSTS` says which hosts the proxy may reach; `ALLOWED_URLS` narrows that to the URLs a client needs. Where a client carries the proxy's API key with it, as a published Foundry module does, the key is not secret, and the allowlist is what keeps the proxy from being useful for anything else. Both apply: a URL must be on an allowed host and match a pattern. Redirects are checked against the same patterns.
+
+Each pattern is a host and a path, without the scheme or the query string:
+
+- In the host, `*.example.com` matches any subdomain of `example.com` (not `example.com` itself), and `*` alone matches any host. Hosts match whatever their case.
+- In the path, `*` matches one segment, and `**` any number of segments, none included. A segment may hold the glob characters `*`, `?` and `[...]`, as in `*.json`. Paths match as they are escaped, so GitLab's `owner%2Frepo` is one segment.
+- The query string is ignored, and so is a trailing slash.
+
+| Pattern                              | Matches                                                  |
+| ------------------------------------ | -------------------------------------------------------- |
+| `api.github.com/repos/*/*/releases`  | the release list of any GitHub repository                |
+| `github.com/*/*/releases/download/**` | anything a GitHub release offers for download           |
+| `*.githubusercontent.com/**`         | any path on any subdomain of `githubusercontent.com`     |
+| `*/**/module.json`                   | a `module.json` anywhere on any allowed host             |
+
+A URL that matches no pattern gets `403` with `{"error":"This URL is not allowed"}`, or `502` when a redirect leads to it. A pattern the proxy cannot read, or a `URL_ALLOWLIST_MODE` other than `enforce` or `report`, stops it at start-up rather than being ignored.
+
+### Finding the URLs a client needs
+
+```shell
+URL_ALLOWLIST_MODE=report
+CLIENT_VERSION_HEADER=X-EMMA-Version
+```
+
+In `report` mode, a URL that matches no pattern is let through, and logged:
+
+```text
+📜 Not in ALLOWED_URLS, allowed (report mode): "https://gitlab.com/api/v4/projects/a%2Fb/releases?per_page=100" client "0.6.0"
+```
+
+Run it while clients work as usual, add patterns for what they need, and switch to `enforce` once the log stays quiet. In `enforce` mode, refused URLs are logged the same way (`refused`), unless `LOG_UNLISTED_URLS=false`. `CLIENT_VERSION_HEADER` names a request header whose value, such as the client's version, is logged with each URL, so you can tell which version of a client asks for what. It is never forwarded upstream. Only a value that looks like a version is logged, at most 64 letters, digits, `.`, `+`, `_` and `-` such as `1.2.3-beta.1`, and anything else as `?`, so a credential sent in it by mistake never reaches the log. For the same reason it cannot be `Authorization`, `Proxy-Authorization`, `Cookie` or `X-API-Key`: the proxy refuses to start. Every value from a caller is logged quoted, so it cannot start a log line of its own.
 
 ## Rate limiting
 
@@ -116,7 +161,7 @@ The cache keeps upstream answers in memory, shared by every client, so a URL man
 
 What it keeps:
 
-- answers to plain `GET` requests. A `POST`, or a request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like), goes straight to the upstream;
+- answers to `GET` requests, the only ones the proxy makes. A request with a `Range` header or a condition of its own (`If-None-Match`, `If-Modified-Since` and the like) goes straight to the upstream;
 - `200` answers for `CACHE_TTL`, and `404` and `410` answers for `CACHE_NEGATIVE_TTL`. Other answers are passed on and not kept;
 - not answers that set cookies, are marked `Cache-Control: no-store`, or say `Vary: *`, nor any larger than `CACHE_MAX_ENTRY_BYTES`.
 
