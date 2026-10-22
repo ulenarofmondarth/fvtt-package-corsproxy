@@ -45,6 +45,17 @@ type Config struct {
 	// to bypass RATE_LIMIT_PER_MINUTE. Only enable this behind a reverse
 	// proxy/platform that actually sets or overwrites the header itself.
 	TrustProxyHeaders bool
+	// CacheTTL is how long an upstream answer is served from the response cache before it is
+	// fetched or revalidated again. 0 turns the cache off.
+	CacheTTL time.Duration
+	// CacheNegativeTTL is the same for a 404 or 410 answer.
+	CacheNegativeTTL time.Duration
+	// CacheMaxStale is how long past CacheTTL an answer is still served when the upstream
+	// refuses (a rate limit, a server error) or cannot be reached.
+	CacheMaxStale time.Duration
+	// CacheMaxBytes bounds the memory the cache uses; CacheMaxEntryBytes, one answer in it.
+	CacheMaxBytes      int64
+	CacheMaxEntryBytes int64
 }
 
 var (
@@ -104,6 +115,11 @@ func main() {
 		}
 	}
 	warnOnOpenDefaults()
+	setupCache()
+	if responseCache != nil {
+		log.Printf("🗄️  Response cache: %v (%v for 404s), served up to %v stale on upstream errors, %d MB (%d KB per answer)",
+			config.CacheTTL, config.CacheNegativeTTL, config.CacheMaxStale, config.CacheMaxBytes/(1024*1024), config.CacheMaxEntryBytes/1024)
+	}
 
 	if err := http.ListenAndServe(":"+config.Port, nil); err != nil {
 		log.Fatal("Server failed to start:", err)
@@ -126,6 +142,11 @@ func loadConfig() {
 		APIKeys:              getEnvList("API_KEYS", ""),
 		DailyRequestLimit:    getEnvInt("DAILY_REQUEST_LIMIT", 0), // 0 = disabled
 		TrustProxyHeaders:    getEnvBool("TRUST_PROXY_HEADERS", false),
+		CacheTTL:             getEnvDuration("CACHE_TTL", 0), // 0 = disabled
+		CacheNegativeTTL:     getEnvDuration("CACHE_NEGATIVE_TTL", 5*time.Minute),
+		CacheMaxStale:        getEnvDuration("CACHE_MAX_STALE", 24*time.Hour),
+		CacheMaxBytes:        getEnvInt64("CACHE_MAX_BYTES", 64*1024*1024),      // 64MB
+		CacheMaxEntryBytes:   getEnvInt64("CACHE_MAX_ENTRY_BYTES", 2*1024*1024), // 2MB
 	}
 }
 
@@ -336,12 +357,90 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	// Cap the request body like the response.
 	r.Body = http.MaxBytesReader(w, r.Body, config.MaxRequestSize)
 
-	// Create new request
+	fetch := func(extra http.Header) (*cachedResponse, error) { return fetchUpstream(r, targetURL, extra) }
+	var resp *cachedResponse
+	var err error
+	cacheState := ""
+	switch {
+	case responseCache == nil:
+		resp, err = fetch(nil)
+	case cacheable(r):
+		result := responseCache.get(cacheKey(targetURL, r.Header), fetch)
+		resp, err, cacheState = result.response, result.err, result.state
+	default:
+		resp, err = fetch(nil)
+		cacheState = cacheBypass
+	}
+	if err != nil {
+		var upstreamErr *upstreamError
+		if errors.As(err, &upstreamErr) {
+			http.Error(w, upstreamErr.body, upstreamErr.status)
+		} else {
+			http.Error(w, `{"error":"Failed to fetch URL"}`, http.StatusBadGateway)
+		}
+		return
+	}
+
+	for key, values := range resp.header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	// Proxied content must never run as a page on the proxy's origin
+	// (phishing/XSS). fetch()/XHR callers are unaffected.
+	w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	// Override CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+	if allowedOrigin != "*" {
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+
+	// Say where the answer came from, readable by the client's script too.
+	if cacheState != "" {
+		w.Header().Set("X-Cache", cacheState)
+		if cacheState != cacheMiss && cacheState != cacheBypass {
+			w.Header().Set("Age", strconv.Itoa(int(resp.age(responseCache.now()).Seconds())))
+		}
+		w.Header().Add("Access-Control-Expose-Headers", "X-Cache, Age")
+	}
+
+	// Copy status code
+	w.WriteHeader(resp.status)
+
+	written, err := w.Write(resp.body)
+	if err != nil {
+		log.Printf("Error writing response body: %v", err)
+		return
+	}
+
+	if config.EnableVerboseLog {
+		log.Printf("%s %s -> %d (%d bytes) %s", r.Method, targetURL, resp.status, written, cacheState)
+	}
+}
+
+// upstreamError is a failure to get an answer from the upstream, with the response the client
+// is sent for it.
+type upstreamError struct {
+	status int
+	body   string
+	err    error
+}
+
+func (e *upstreamError) Error() string { return e.err.Error() }
+func (e *upstreamError) Unwrap() error { return e.err }
+
+// errUpstreamTooLarge is an upstream answer over MAX_REQUEST_SIZE.
+var errUpstreamTooLarge = errors.New("upstream response is too large")
+
+// fetchUpstream sends the client's request to the target, with the extra headers added, and
+// reads the whole answer.
+func fetchUpstream(r *http.Request, targetURL string, extra http.Header) (*cachedResponse, error) {
 	proxyReq, err := http.NewRequestWithContext(context.Background(), r.Method, targetURL, r.Body)
 	if err != nil {
 		log.Printf("Error creating request: %v", err)
-		http.Error(w, fmt.Sprintf(`{"error":"Invalid URL: %s"}`, err.Error()), http.StatusBadRequest)
-		return
+		return nil, &upstreamError{http.StatusBadRequest, fmt.Sprintf(`{"error":"Invalid URL: %s"}`, err.Error()), err}
 	}
 
 	// Copy headers from the original request, except ones that shouldn't
@@ -357,6 +456,9 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 		for _, value := range values {
 			proxyReq.Header.Add(key, value)
 		}
+	}
+	for key, values := range extra {
+		proxyReq.Header[key] = values
 	}
 
 	// Make the request
@@ -380,11 +482,9 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error fetching URL %s: %v", targetURL, err)
 		}
 		if errors.Is(err, errPrivateAddress) {
-			http.Error(w, `{"error":"This host is not allowed"}`, http.StatusForbidden)
-			return
+			return nil, &upstreamError{http.StatusForbidden, `{"error":"This host is not allowed"}`, err}
 		}
-		http.Error(w, fmt.Sprintf(`{"error":"Failed to fetch URL: %s"}`, err.Error()), http.StatusBadGateway)
-		return
+		return nil, &upstreamError{http.StatusBadGateway, fmt.Sprintf(`{"error":"Failed to fetch URL: %s"}`, err.Error()), err}
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -399,54 +499,25 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 	// over it) before writing any status code or bytes to the client. That
 	// way an oversized chunked response gets a clean 502 instead of a 200
 	// that gets silently cut off mid-body.
+	tooLarge := &upstreamError{http.StatusBadGateway, `{"error":"Upstream response is too large"}`, errUpstreamTooLarge}
 	if resp.ContentLength > config.MaxRequestSize {
-		http.Error(w, `{"error":"Upstream response is too large"}`, http.StatusBadGateway)
-		return
+		return nil, tooLarge
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, config.MaxRequestSize+1))
 	if err != nil {
 		log.Printf("Error reading upstream response: %v", err)
-		http.Error(w, `{"error":"Failed to read upstream response"}`, http.StatusBadGateway)
-		return
+		return nil, &upstreamError{http.StatusBadGateway, `{"error":"Failed to read upstream response"}`, err}
 	}
 	if int64(len(body)) > config.MaxRequestSize {
-		http.Error(w, `{"error":"Upstream response is too large"}`, http.StatusBadGateway)
-		return
+		return nil, tooLarge
 	}
 
-	// Copy response headers, except cookies: with credentials allowed, an
+	// Keep the response headers, except cookies: with credentials allowed, an
 	// upstream could otherwise set cookies on the proxy's own domain.
-	for key, values := range resp.Header {
-		if strings.EqualFold(key, "Set-Cookie") {
-			continue
-		}
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	// Proxied content must never run as a page on the proxy's origin
-	// (phishing/XSS). fetch()/XHR callers are unaffected.
-	w.Header().Set("Content-Security-Policy", "sandbox; default-src 'none'")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-
-	// Override CORS headers
-	w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-	if allowedOrigin != "*" {
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-	}
-
-	// Copy status code
-	w.WriteHeader(resp.StatusCode)
-
-	written, err := w.Write(body)
-	if err != nil {
-		log.Printf("Error writing response body: %v", err)
-		return
-	}
-
-	if config.EnableVerboseLog {
-		log.Printf("%s %s -> %s (%d bytes, %d status)", r.Method, targetURL, resp.Status, written, resp.StatusCode)
-	}
+	header := resp.Header.Clone()
+	setsCookies := len(header.Values("Set-Cookie")) > 0
+	header.Del("Set-Cookie")
+	return &cachedResponse{status: resp.StatusCode, header: header, body: body, setsCookies: setsCookies}, nil
 }
 
 func getClientIP(r *http.Request) string {

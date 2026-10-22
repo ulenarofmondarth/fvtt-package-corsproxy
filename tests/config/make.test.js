@@ -19,17 +19,17 @@ function gate(total, min) {
 
 describe('the coverage gate', () => {
   it.each([
-    ['82.3', '82', true],
-    ['82.0', '82', true],
-    ['81.9', '82', false],
-    ['100.0', '82', true],
-    ['9.5', '82', false],
+    ['86.8', '86', true],
+    ['86.0', '86', true],
+    ['85.9', '86', false],
+    ['100.0', '86', true],
+    ['9.5', '86', false],
   ])('passes %s%% against a minimum of %s%%: %s', (total, min, passes) => {
     expect(gate(total, min)).toBe(passes);
   });
 
   it('is the comparison the Makefile runs', () => {
     const recipe = execFileSync('make', ['-n', 'coverage'], { encoding: 'utf8' });
-    expect(recipe).toContain(`awk -v total="$total" -v min="82" 'BEGIN { exit !(total >= min) }'`);
+    expect(recipe).toContain(`awk -v total="$total" -v min="86" 'BEGIN { exit !(total >= min) }'`);
   });
 });

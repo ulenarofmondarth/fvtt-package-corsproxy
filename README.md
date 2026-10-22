@@ -15,6 +15,7 @@ It is a fork of [melihbirim/corsproxy](https://github.com/melihbirim/corsproxy),
 ## Features
 
 - **One static binary**, using only Go's standard library, for Linux, macOS and Windows, and a multi-arch container image of under 15 MB that runs as an unprivileged user.
+- **A shared response cache**, off until you set `CACHE_TTL`: each upstream answer is fetched once for every client, revalidated cheaply when it expires, and served stale when the upstream refuses, as GitHub does once its rate limit is reached.
 - **Locked down when you need it**: allowed origins, allowed and blocked hosts, API keys, a per-IP rate limit and a daily request ceiling.
 - **Safe by default**: private, loopback and cloud metadata addresses are refused on every connection, redirects included; credentials (`Authorization`, `Cookie`, `X-API-Key`) are never forwarded; cookies from upstream are dropped; proxied content cannot run as a page of the proxy's origin.
 - **Honest about sizes**: responses over the limit are refused, never cut short.
@@ -26,6 +27,7 @@ docker run -d -p 8080:8080 \
   -e ALLOWED_ORIGINS=https://foundry.example.com \
   -e ALLOWED_HOSTS=foundryvtt.com,api.github.com,github.com,githubusercontent.com,gitlab.com \
   -e REQUIRE_API_KEY=true -e API_KEYS=change-me \
+  -e CACHE_TTL=1h \
   ghcr.io/ulenarofmondarth/fvtt-package-corsproxy:latest
 
 curl -H "X-API-Key: change-me" "http://localhost:8080/?url=https://api.github.com/repos/octocat/Hello-World"
