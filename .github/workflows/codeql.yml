@@ -1,0 +1,35 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, javascript-typescript, actions]
+    steps:
+      - uses: actions/checkout@v7
+      # The Go extractor builds the code, with the toolchain go.mod names.
+      - if: matrix.language == 'go'
+        uses: ./.github/actions/setup-go
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

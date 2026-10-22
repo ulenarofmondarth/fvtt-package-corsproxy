@@ -1,0 +1,6 @@
+# Only go.mod and the Go sources go into the image.
+*
+!go.mod
+!go.sum
+!*.go
+*_test.go

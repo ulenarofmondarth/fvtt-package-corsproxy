@@ -1,54 +1,14 @@
-# Pull Request
+## What and why
 
-## Description
+<!-- What does this change, and why? Link issues with "Closes #N". -->
 
-Brief description of changes.
+## How it was tested
 
-## Type of Change
-
-- [ ] Bug fix (non-breaking change fixing an issue)
-- [ ] New feature (non-breaking change adding functionality)
-- [ ] Breaking change (fix or feature causing existing functionality to change)
-- [ ] Documentation update
-- [ ] Performance improvement
-- [ ] Code refactoring
-
-## Related Issue
-
-Fixes #(issue number)
-
-## Changes Made
-
-- Change 1
-- Change 2
-- Change 3
-
-## Testing
-
-- [ ] All existing tests pass (`make test`)
-- [ ] Added new tests for new functionality
-- [ ] Tested manually
-
-### Test Results
-
-```bash
-# Paste test output here
-make test
-```
+<!-- New or changed tests; anything checked by hand (make smoke, a real deployment). -->
 
 ## Checklist
 
-- [ ] Code follows project style guidelines (`make lint` passes)
-- [ ] Self-reviewed code
-- [ ] Commented complex code sections
-- [ ] Updated documentation (README.md, CONTRIBUTING.md)
-- [ ] Updated .env.example if new environment variables added
-- [ ] No breaking changes (or documented if necessary)
-
-## Screenshots (if applicable)
-
-Add screenshots showing the change.
-
-## Additional Notes
-
-Any additional context or notes for reviewers.
+- [ ] Targets `dev` (not `main`)
+- [ ] Tests added or updated (a bug fix starts with a failing test)
+- [ ] Documentation updated, including any new environment variable in `.env.example` and `make config`
+- [ ] Commit messages follow Conventional Commits, with a scope

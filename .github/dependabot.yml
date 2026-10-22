@@ -1,0 +1,69 @@
+version: 2
+updates:
+  # The proxy's Go modules (none yet: it uses only the standard library) and toolchain.
+  - package-ecosystem: gomod
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(deps)
+
+  # Base images of the proxy (Dockerfile, Dockerfile.dev).
+  - package-ecosystem: docker
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(docker)
+
+  # The repository's tooling: commit hooks, semantic-release, the tests of their configuration.
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps-dev)
+    ignore:
+      # Version 10 needs conventional-changelog-writer 9, but semantic-release's notes generator
+      # still uses writer 8. Lift this once it upgrades.
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ['version-update:semver-major']
+    groups:
+      test:
+        patterns: ['vitest', 'yaml']
+      lint:
+        patterns: ['eslint', '@eslint/*', 'eslint-*', 'globals', 'prettier']
+      commit-tooling:
+        patterns: ['@commitlint/*', 'commitizen', 'cz-*', 'husky', 'lint-staged']
+      release:
+        patterns: ['semantic-release', '@semantic-release/*', 'conventional-changelog-*']
+
+  # Python requirements of the documentation build.
+  - package-ecosystem: pip
+    directory: /docs
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(docs)
+
+  # Base image of the documentation build.
+  - package-ecosystem: docker
+    directory: /docs
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(docs)
+
+  - package-ecosystem: github-actions
+    directories: ['/', '/.github/actions/*']
+    target-branch: dev
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci(workflows)

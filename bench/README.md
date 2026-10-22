@@ -14,10 +14,10 @@ docker build -t bench-upstream upstream
 docker build -t cf-workerd worker
 
 docker run -d --name up  --network bench bench-upstream
-docker run -d --name px  --network bench -e ALLOW_PRIVATE_NETWORKS=true ghcr.io/melihbirim/corsproxy:1.2.6
-docker run -d --name px2 --network bench ghcr.io/melihbirim/corsproxy:1.2.6
-docker run -d --name px3 --network bench -e ALLOW_PRIVATE_NETWORKS=true -e ALLOWED_ORIGINS=https://app.example.com ghcr.io/melihbirim/corsproxy:1.2.6
-docker run -d --name px4 --network bench -e ALLOW_PRIVATE_NETWORKS=true -e RATE_LIMIT_PER_MINUTE=5 ghcr.io/melihbirim/corsproxy:1.2.6
+docker run -d --name px  --network bench -e ALLOW_PRIVATE_NETWORKS=true ghcr.io/ulenarofmondarth/fvtt-package-corsproxy:1.2.6
+docker run -d --name px2 --network bench ghcr.io/ulenarofmondarth/fvtt-package-corsproxy:1.2.6
+docker run -d --name px3 --network bench -e ALLOW_PRIVATE_NETWORKS=true -e ALLOWED_ORIGINS=https://app.example.com ghcr.io/ulenarofmondarth/fvtt-package-corsproxy:1.2.6
+docker run -d --name px4 --network bench -e ALLOW_PRIVATE_NETWORKS=true -e RATE_LIMIT_PER_MINUTE=5 ghcr.io/ulenarofmondarth/fvtt-package-corsproxy:1.2.6
 docker run -d --name cfw --network bench cf-workerd
 
 # load (repeat with -n 40000 -c 200)

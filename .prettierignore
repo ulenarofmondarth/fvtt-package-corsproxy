@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+coverage/
+/bin/
+/dist/
+docs/_build/
+CHANGELOG.md
+# Prettier does not understand MyST: it re-indents directive fences and definition lists.
+docs/**/*.md
+# The benchmark harness is kept as upstream wrote it.
+bench/
