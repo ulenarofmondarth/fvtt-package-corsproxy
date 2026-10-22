@@ -56,7 +56,7 @@ The proxy then sends `Authorization: Bearer <token>` with every request to `api.
 Every client of the proxy can read whatever the token can, and with the cache on the answers are shared between them. So give it access to public repositories only:
 
 1. On GitHub, open **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. Name it for the proxy, and give it an expiry date. Remember to replace it before then.
+2. Name it for the proxy, and give it an expiry date within a year. An organization can refuse fine-grained tokens that last longer, even for its public repositories (see {ref}`token-refused-by-organization`). Remember to replace it before it expires.
 3. Under **Repository access**, choose **Public repositories**. Leave every permission at **No access**: reading public releases needs none.
 4. Generate it, and give it to the proxy as `GITHUB_TOKEN`, from a secret store or an environment file only root can read, never from a file in a repository.
 
