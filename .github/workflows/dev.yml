@@ -56,8 +56,10 @@ jobs:
           version: v2.15.0
       - name: ESLint
         run: pnpm lint:repo
-      - name: Typecheck the tooling
+      - name: Typecheck the tooling (TypeScript 7)
         run: pnpm typecheck
+      - name: Typecheck the tooling (TypeScript 6 fallback)
+        run: pnpm typecheck:fallback
       - name: Prettier
         run: pnpm exec prettier --check .
 

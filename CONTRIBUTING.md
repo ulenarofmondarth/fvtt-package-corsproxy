@@ -33,7 +33,7 @@ Keep pull requests small and focused, and update the documentation alongside the
 | -------------------- | ------------------------------------------------------------------- |
 | `pnpm format:check`  | gofmt and Prettier (`pnpm format` fixes both)                       |
 | `pnpm lint`          | `go vet`, golangci-lint, and ESLint over the tooling; warnings fail |
-| `pnpm typecheck`     | The tooling's TypeScript                                            |
+| `pnpm typecheck`     | The tooling's TypeScript, with TypeScript 7 (`:fallback` uses 6)    |
 | `pnpm test`          | The Go tests, then the tests of the repository's tooling            |
 | `pnpm test:coverage` | The same, with the Go coverage gate                                 |
 | `make dist`          | The release binaries cross-compile                                  |

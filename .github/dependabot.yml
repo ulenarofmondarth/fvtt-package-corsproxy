@@ -37,7 +37,7 @@ updates:
         update-types: ['version-update:semver-major']
     groups:
       typescript:
-        patterns: ['typescript', 'vitest']
+        patterns: ['typescript', 'typescript7', 'vitest']
       lint:
         patterns: ['eslint', '@eslint/*', 'eslint-*', 'typescript-eslint', 'globals', 'prettier']
       commit-tooling:

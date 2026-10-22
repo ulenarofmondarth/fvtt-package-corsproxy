@@ -11,7 +11,7 @@ Runs on every push to `dev`, on every pull request to `dev` or `main`, and as th
 | Job             | Checks                                                                                                         |
 | --------------- | -------------------------------------------------------------------------------------------------------------- |
 | Commit messages | commitlint over the pull request's commits (pull requests only)                                                |
-| Lint            | gofmt, `go vet`, golangci-lint, ESLint and the type check over the tooling, Prettier                           |
+| Lint            | gofmt, `go vet`, golangci-lint, ESLint and the type check (TypeScript 7, then the 6 fallback) over the tooling, Prettier |
 | Tests           | the Go tests with the coverage gate (summary on the job page, uploaded to Codecov), then the tooling's tests   |
 | Build           | cross-compiles the release binaries (kept as an artifact); builds the container image and checks that it starts and reports its version |
 | Docs            | calls the Docs workflow                                                                                        |

@@ -33,3 +33,9 @@ make run          # the proxy on http://localhost:8080
 pnpm build:docs       # docs/_build/html; any warning fails the build
 pnpm devserve:docs    # live preview on http://localhost:8088
 ```
+
+(typescript-compilers)=
+
+## TypeScript compilers
+
+The tooling's TypeScript (the commitlint configuration and the tests in `tests/`) is checked with TypeScript 7, the native compiler (`typescript7`, which provides `tsc`). `typescript` is an alias of TypeScript 6 (`tsc6`), for tools that do not support 7 yet; typescript-eslint loads it. CI runs both (`pnpm typecheck`, `pnpm typecheck:fallback`). Remove the fallback once every tool supports TypeScript 7.

@@ -28,6 +28,7 @@ Every bug fix starts with a test that fails because of the bug.
 - `commitlint.test.ts`: the commit message rules;
 - `release.test.ts`: the semantic-release configuration, the version bump (pnpm, offline, nothing but the version changes) and the release workflow's wiring;
 - `make.test.ts`: the Makefile's coverage gate;
+- `scripts.test.ts`: the type check scripts run tools the project installs, not global ones;
 - `action-pins.test.ts`: third-party actions are pinned to a commit (see {doc}`ci-cd`).
 
 ```shell

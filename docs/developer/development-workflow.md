@@ -63,7 +63,7 @@ The first line repeats the pre-commit checks by hand; the amend alone would not,
 | -------------------- | ----------------------------------------------------------------------- |
 | `pnpm format:check`  | gofmt and Prettier (`pnpm format` fixes both)                           |
 | `pnpm lint`          | `go vet`, golangci-lint, and ESLint over the tooling; warnings fail     |
-| `pnpm typecheck`     | The tooling's TypeScript                                                |
+| `pnpm typecheck`     | The tooling's TypeScript, with TypeScript 7 (`pnpm typecheck:fallback` uses TypeScript 6) |
 | `pnpm test`          | The Go tests, then the tooling's tests                                  |
 | `pnpm test:coverage` | The Go tests with the coverage gate, then the tooling's tests           |
 | `make smoke`         | A real server against real sites (needs the network; not run in CI)    |
