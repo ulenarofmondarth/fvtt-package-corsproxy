@@ -451,27 +451,22 @@ func corsProxyHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Access-Control-Expose-Headers", "X-Cache, Age")
 	}
 
-	// The client already has this answer: say so, without it.
+	// Copy status code, unless the client already has this answer: then say so, without it.
+	status, body := resp.status, resp.body
 	if cacheState != "" && cacheState != cacheBypass && notModified(r, resp) {
+		status, body = http.StatusNotModified, nil
 		w.Header().Del("Content-Length")
-		w.WriteHeader(http.StatusNotModified)
-		if config.EnableVerboseLog {
-			log.Printf("%s %q -> %d %s client %q", r.Method, targetURL, http.StatusNotModified, cacheState, clientVersion(r))
-		}
-		return
 	}
+	w.WriteHeader(status)
 
-	// Copy status code
-	w.WriteHeader(resp.status)
-
-	written, err := w.Write(resp.body)
+	written, err := w.Write(body)
 	if err != nil {
 		log.Printf("Error writing response body: %v", err)
 		return
 	}
 
 	if config.EnableVerboseLog {
-		log.Printf("%s %q -> %d (%d bytes) %s client %q", r.Method, targetURL, resp.status, written, cacheState, clientVersion(r))
+		log.Printf("%s %q -> %d (%d bytes) %s client %q", r.Method, targetURL, status, written, cacheState, clientVersion(r))
 	}
 }
 
